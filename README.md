@@ -26,7 +26,7 @@ Provided you have a C compiler, GNU make on a Unix box:
 
 ## Using it
 
-    $ LD_PRELOAD=./libconnect-or-cut.so COC_ALLOW='212.27.40.240:53;212.27.40.241:53;\*.google.com;\*.1e100.net' COC_BLOCK='\*' iceweasel
+    $ LD_PRELOAD=./libconnect-or-cut.so COC_ALLOW='212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net' COC_BLOCK='*' iceweasel
 
 
 This invokes chromium, allowing only outgoing connection to my ISP
