@@ -5,6 +5,10 @@ TGT := libconnect-or-cut.so
 CC      += -pthread
 CFLAGS  += -Wall -fPIC
 
+ifeq ($(stealth),1)
+CFLAGS  += -DCOC_STEALTH
+endif
+
 .PHONY: all
 all: $(TGT)
 
