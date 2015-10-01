@@ -131,6 +131,8 @@ DEFINE_COC_STRUCT (glob, char *);
 #define COC_LOG_LEVEL_ENV_VAR_NAME "COC_LOG_LEVEL"
 #define COC_LOG_TARGET_ENV_VAR_NAME "COC_LOG_TARGET"
 
+extern char *__progname;
+
 static volatile bool initialized = false;
 static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
 static coc_log_target_t log_target = COC_STDERR_LOG;
@@ -663,8 +665,8 @@ coc_init (void)
 
       if ((log_target & COC_FILE_LOG) == COC_FILE_LOG)
 	{
-	  log_file_name = malloc (strlen (program_invocation_short_name) + 5);
-	  strcpy (log_file_name, program_invocation_short_name);
+	  log_file_name = malloc (strlen (__progname) + 5);
+	  strcpy (log_file_name, __progname);
 	  strcat (log_file_name, ".coc");
 	}
     }
