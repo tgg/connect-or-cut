@@ -35,6 +35,13 @@ provided name servers, to all google.com and 1e100.net addresses.
 Everything else will be blocked, with connection blocking messages
 displayed on stderr.
 
+## Use cases
+
+You can use connect-or-cut to:
+
+ 1. Sandbox an untrusted application to prevent all ourgoing connections from it
+ 2. Monitor where an application is connecting to understand how it works
+ 3. Filter out advertising sites during your web navigation
 
 ## Environment variables
 
@@ -54,6 +61,8 @@ displayed on stderr.
 
 ## Roadmap
 
+ * Fix issues. Not specifying any rule makes iceweasel crash
+ * Implement stealth mode
  * Add a wrapper script to ease invocation
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
