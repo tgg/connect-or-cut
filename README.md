@@ -56,8 +56,10 @@ You can use connect-or-cut to:
 ## Limitations
 
  * Only outgoing connection using TCP over IPv4 work for now.
- * Tested only with gcc and clang on Debian GNU/Linux. Portability
-   patches welcome!
+ * Tested only on:
+   * Debian GNU/Linux with gcc and clang
+   * Mac OS X 10.4 with gcc
+   Portability patches welcome!
 
 ## Roadmap
 

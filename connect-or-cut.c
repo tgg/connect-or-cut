@@ -132,7 +132,15 @@ DEFINE_COC_STRUCT (glob, char *);
 #define COC_LOG_TARGET_ENV_VAR_NAME "COC_LOG_TARGET"
 #define COC_PRELOAD_ENV_VAR_NAME "LD_PRELOAD"
 
+#ifndef HAVE_GETPROGNAME
 extern char *__progname;
+
+static inline const char *
+getprogname()
+{
+  return __progname;
+}
+#endif
 
 #ifdef COC_STEALTH
 static size_t env_var_kept = 0;
@@ -200,6 +208,29 @@ coc_log (coc_log_level_t level, const char *format, ...)
     coc_log (COC_BLOCK_ERROR_LEVEL,"ERROR " __VA_ARGS__); \
     exit (EXIT_FAILURE); \
   } while (0)
+
+#ifdef MISSING_STRNDUP
+static inline char *
+strndup (const char *s, size_t n)
+{
+  size_t len = strlen (s);
+
+  if (len > n)
+    {
+      len = n;
+    }
+
+  char * ns = (char *) malloc (len + 1);
+
+  if (ns != NULL)
+    {
+      ns[len] = '\0';
+      memcpy (ns, s, len);
+    }
+
+  return ns;
+}
+#endif
 
 static int
 coc_rule_add (const char *str, size_t len, size_t rule_type)
@@ -523,7 +554,10 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	struct addrinfo *ailist, *aip;
 	struct addrinfo hints;
 	int err;
-	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
+	hints.ai_flags = AI_NUMERICSERV;
+#ifdef AI_ADDRCONFIG
+	hints.ai_flags |= AI_ADDRCONFIG;
+#endif
 	hints.ai_family = AF_UNSPEC;	/* IPv4 or IPv6 or others */
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = 6;	/* TCP */
@@ -710,8 +744,9 @@ coc_init (void)
 
       if ((log_target & COC_FILE_LOG) == COC_FILE_LOG)
 	{
-	  log_file_name = malloc (strlen (__progname) + 5);
-	  strcpy (log_file_name, __progname);
+	  const char *progname = getprogname();
+	  log_file_name = malloc (strlen (progname) + 5);
+	  strcpy (log_file_name, progname);
 	  strcat (log_file_name, ".coc");
 	}
     }
