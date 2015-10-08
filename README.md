@@ -55,6 +55,7 @@ You can use connect-or-cut to:
 
 ## Limitations
 
+ * It does not work with statically linked programs.
  * Only outgoing connection using TCP over IPv4 work for now.
  * Tested only on:
    * Debian GNU/Linux with gcc and clang
