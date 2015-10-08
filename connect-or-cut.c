@@ -882,6 +882,9 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	  coc_log (COC_BLOCK_ERROR_LEVEL, "ERROR resolving name: %s\n",
 		   gai_strerror (rc));
 	}
+
+      coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n", str4,
+	       ntohs (port));
     }
 
   return real_connect (fd, addr, addrlen);
