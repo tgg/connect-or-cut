@@ -60,12 +60,12 @@ You can use connect-or-cut to:
  * Tested only on:
    * Debian GNU/Linux with gcc and clang
    * Mac OS X 10.4 with gcc
+
    Portability patches welcome!
 
 ## Roadmap
 
  * Fix issues. Not specifying any rule makes iceweasel crash
- * Add timestamp to messages, similarly to syslog
  * Add a wrapper script to ease invocation
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:

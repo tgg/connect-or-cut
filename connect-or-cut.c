@@ -53,6 +53,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <syslog.h>
+#include <time.h>
 
 typedef enum coc_addr_type
 {
@@ -165,11 +166,19 @@ coc_log (coc_log_level_t level, const char *format, ...)
 {
   if (log_level >= level)
     {
+      struct tm now_tm;
+      time_t now;
+      char buffer[sizeof ("mmm DD HH:MM:SS ")];
+      time (&now);
+      localtime_r (&now, &now_tm);
+      strftime (buffer, sizeof (buffer), "%h %e %T ", &now_tm);
+
       if ((log_target & COC_FILE_LOG) == COC_FILE_LOG)
 	{
 	  va_list ap;
 	  va_start (ap, format);
 	  FILE *log_stream = fopen (log_file_name, "a");
+	  fprintf (log_stream, "%s", buffer);
 	  vfprintf (log_stream, format, ap);
 	  fclose (log_stream);
 	  va_end (ap);
@@ -179,6 +188,7 @@ coc_log (coc_log_level_t level, const char *format, ...)
 	{
 	  va_list ap;
 	  va_start (ap, format);
+	  fprintf (stderr, "%s", buffer);
 	  vfprintf (stderr, format, ap);
 	  va_end (ap);
 	}
