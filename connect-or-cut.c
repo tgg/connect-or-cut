@@ -260,8 +260,10 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
   while (p < str + len)
     {
+      unsigned char c = *p;
+
       /* `*' allowed only for glob. Let's go on to check for errors. */
-      if (*p == '*')
+      if (c == '*')
 	{
 	  /* `*' not allowed if only remaining choices are IPv4 or IPv6. */
 	  if (!(type & ~(COC_IPV4_ADDR | COC_IPV6_ADDR)))
@@ -275,7 +277,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	}
 
       /* `[' allowed only at beginning of address for IPv6. */
-      else if (*p == '[')
+      else if (c == '[')
 	{
 	  if (p == str)		/* RFC 3986 */
 	    {
@@ -288,7 +290,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	}
 
-      else if (*p == ']')
+      else if (c == ']')
 	{
 	  if (type == COC_IPV6_ADDR && sb == IPV6_SB_OPEN)
 	    {
@@ -300,7 +302,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	}
 
-      else if (*p == ':')
+      else if (c == ':')
 	{
 	  /* IPv6 uses `:' as a segment separator. So we count them.
 	   * TODO validation for IPv6 is missing. */
@@ -347,7 +349,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
        * out IPv4 when we have a segment that does not fit what is
        * expected (e.g. higher than 255). TODO leading zero.
        */
-      else if (*p == '.')
+      else if (c == '.')
 	{
 	  if (type == COC_IPV6_ADDR)
 	    {
@@ -372,12 +374,12 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	}
 
-      else if (isdigit (*p))
+      else if (isdigit (c))
 	{
 	  if ((type & COC_IPV4_ADDR) == COC_IPV4_ADDR)
 	    {
 	      /* TODO overflow */
-	      segment = segment * 10 + (*p - '0');
+	      segment = segment * 10 + (c - '0');
 
 	      if (segment > 255)
 		{
@@ -393,7 +395,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	}
 
-      else if (isxdigit (*p))	/* and not a digit */
+      else if (isxdigit (c))	/* and not a digit */
 	{
 	  if (type == COC_IPV4_ADDR)	/* not possible */
 	    {
@@ -405,11 +407,11 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	}
 
-      else if (isalnum (*p))	/* not a digit nor an xdigit */
+      else if (isalnum (c))	/* not a digit nor an xdigit */
 	{
 	  if (!(type & ~(COC_IPV4_ADDR | COC_IPV6_ADDR)))
 	    {
-	      DIE ("`%c' unexpected, aborting\n", *p);
+	      DIE ("`%c' unexpected, aborting\n", c);
 	    }
 	  else
 	    {
@@ -417,11 +419,11 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	}
 
-      else if (*p == '-')
+      else if (c == '-')
 	{
 	  if (!(type & ~(COC_IPV4_ADDR | COC_IPV6_ADDR)) || p == str)
 	    {
-	      DIE ("`%c' unexpected, aborting\n", *p);
+	      DIE ("`%c' unexpected, aborting\n", c);
 	    }
 	  else
 	    {
@@ -432,7 +434,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
       else
 	{
 	  /* We may revisit this later for UTF-8 */
-	  DIE ("`%c' unexpected here, aborting\n", *p);
+	  DIE ("`%c' unexpected here, aborting\n", c);
 	}
 
       p++;
@@ -473,20 +475,22 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
       while (t < str + len)
 	{
-	  if (isdigit (*t))
+	  unsigned char u = *t;
+
+	  if (isdigit (u))
 	    {
 	      /* TODO overflow */
-	      port = port * 10 + (*t - '0');
+	      port = port * 10 + (u - '0');
 	    }
 
-	  else if (isalnum (*t) || *t == '-')
+	  else if (isalnum (u) || u == '-')
 	    {
 	      getservbyname_needed = true;
 	    }
 
 	  else
 	    {
-	      DIE ("`%c' unexpected for port, aborting\n", *t);
+	      DIE ("`%c' unexpected for port, aborting\n", u);
 	    }
 
 	  t++;
@@ -905,7 +909,7 @@ int
 execve (const char *filename, char *const argv[], char *const envp[])
 {
   coc_log (COC_DEBUG_LOG_LEVEL, "Unhiding before running %s\n", filename);
-  size_t size = 0;
+  size_t size = 0, i;
   const char **p = (const char **) envp;
 
   while (*p)
@@ -917,7 +921,7 @@ execve (const char *filename, char *const argv[], char *const envp[])
   char *const *nenvp =
     (char *const *) malloc (sizeof (char *) * (size + env_var_kept + 1));
   p = (const char **) nenvp;
-  for (size_t i = 0; i < size; i++)
+  for (i = 0; i < size; i++)
     {
       *p++ = envp[i];
     }
