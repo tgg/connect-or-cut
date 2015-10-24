@@ -2,12 +2,11 @@ SRC := connect-or-cut.c
 OBJ := $(SRC:.c=.o)
 TGT := libconnect-or-cut.so
 
+OPTION_STEALTH_1 := -DCOC_STEALTH
+
 CC      += -pthread
 CFLAGS  += -Wall -fPIC
-
-ifeq ($(stealth),1)
-CFLAGS  += -DCOC_STEALTH
-endif
+CPPFLAGS+= ${OPTION_STEALTH_${stealth}}
 
 .PHONY: all
 all: $(TGT)
