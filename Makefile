@@ -1,4 +1,4 @@
-SRC := $(wildcard *.c)
+SRC := connect-or-cut.c
 OBJ := $(SRC:.c=.o)
 TGT := libconnect-or-cut.so
 
@@ -14,7 +14,7 @@ all: $(TGT)
 
 .PHONY: clean
 clean:
-	$(RM) $(OBJ) $(TGT)
+	rm -f $(OBJ) $(TGT)
 
 $(TGT): $(OBJ)
-	$(CC) -shared -o $@ $< -ldl
+	$(CC) -shared -o $(TGT) $(OBJ) -ldl
