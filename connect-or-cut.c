@@ -133,7 +133,7 @@ DEFINE_COC_STRUCT (glob, char *);
 #define COC_LOG_TARGET_ENV_VAR_NAME "COC_LOG_TARGET"
 #define COC_PRELOAD_ENV_VAR_NAME "LD_PRELOAD"
 
-#ifdef MISSING_GETPROGNAME
+#ifndef HAVE_GETPROGNAME
 extern char *__progname;
 
 static inline const char *
@@ -219,7 +219,7 @@ coc_log (coc_log_level_t level, const char *format, ...)
     exit (EXIT_FAILURE); \
   } while (0)
 
-#ifndef HAVE_STRNDUP
+#ifdef MISSING_STRNDUP
 static inline char *
 strndup (const char *s, size_t n)
 {
