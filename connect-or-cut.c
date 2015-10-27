@@ -219,7 +219,9 @@ coc_log (coc_log_level_t level, const char *format, ...)
     exit (EXIT_FAILURE); \
   } while (0)
 
-#ifdef MISSING_STRNDUP
+#if defined(__APPLE__) && defined(__MACH__)
+#include <AvailabilityMacros.h>
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
 static inline char *
 strndup (const char *s, size_t n)
 {
@@ -240,6 +242,7 @@ strndup (const char *s, size_t n)
 
   return ns;
 }
+#endif
 #endif
 
 static int
