@@ -21,7 +21,7 @@ Provided you have a C compiler, GNU make on a Unix box:
 
     $ cd connect-or-cut
 
-    $ make
+    $ make os=$(uname -s)
 
 
 ## Using it
