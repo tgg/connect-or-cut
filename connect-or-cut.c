@@ -55,6 +55,20 @@
 #include <syslog.h>
 #include <time.h>
 
+#if defined(__APPLE__) && defined(__MACH__)
+#include <AvailabilityMacros.h>
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+#define MISSING_STRNDUP
+#endif
+#endif
+
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#include <sys/param.h>
+#if defined(BSD)
+#define HAVE_GETPROGNAME
+#endif
+#endif
+
 typedef enum coc_addr_type
 {
   COC_IPV4_ADDR = 1 << 0,	/* 1 */
@@ -219,9 +233,7 @@ coc_log (coc_log_level_t level, const char *format, ...)
     exit (EXIT_FAILURE); \
   } while (0)
 
-#if defined(__APPLE__) && defined(__MACH__)
-#include <AvailabilityMacros.h>
-#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+#ifdef MISSING_STRNDUP
 static inline char *
 strndup (const char *s, size_t n)
 {
@@ -242,7 +254,6 @@ strndup (const char *s, size_t n)
 
   return ns;
 }
-#endif
 #endif
 
 static int

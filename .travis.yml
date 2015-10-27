@@ -6,6 +6,3 @@ os:
   - linux
   - osx
 script: make os=$(uname -s)
-matrix:
-  allow_failures:
-    - os: osx
