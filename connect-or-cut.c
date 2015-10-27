@@ -167,6 +167,7 @@ static const char *preload_env_var = NULL;
 #endif
 
 static volatile bool initialized = false;
+static bool needs_dns_lookup = false;
 static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
 static coc_log_target_t log_target = COC_STDERR_LOG;
 static char *log_file_name = NULL;
@@ -574,6 +575,12 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	/* Here we transfer ownership of `host' to the entry. */
 	coc_glob_rule_insert (coc_glob_entry_alloc (), &host, htons (port),
 			      rule_type);
+
+	/* Do not perform DNS lookups for '*' rules. We don't need to. */
+	if (host[0] != '*' || host[1] != '\0')
+	  {
+	    needs_dns_lookup = true;
+	  }
 	break;
       }
 
@@ -873,9 +880,14 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	  }
       }
 
-      char hbuf[NI_MAXHOST];
-      int rc = getnameinfo (addr, addrlen, hbuf, sizeof (hbuf), NULL, 0,
+      char hbuf[NI_MAXHOST] = "*";
+      int rc = 0;
+
+      if (needs_dns_lookup)
+	{
+	  rc = getnameinfo (addr, addrlen, hbuf, sizeof (hbuf), NULL, 0,
 			    NI_NUMERICSERV);
+	}
 
       if (rc == 0)
 	{
@@ -883,7 +895,8 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	  coc_glob_entry_t *glob;
 	  SLIST_FOREACH (glob, &glob_list_head[COC_ALLOW], entries)
 	  {
-	    if (!fnmatch (glob->addr, hbuf, 0)
+	    if (((glob->addr[0] == '*' && glob->addr[1] == '\0')
+		 || !fnmatch (glob->addr, hbuf, 0))
 		&& (!glob->port || glob->port == port))
 	      {
 		coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n",
@@ -894,7 +907,8 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 
 	  SLIST_FOREACH (glob, &glob_list_head[COC_BLOCK], entries)
 	  {
-	    if (!fnmatch (glob->addr, hbuf, 0)
+	    if (((glob->addr[0] == '*' && glob->addr[1] == '\0')
+		 || !fnmatch (glob->addr, hbuf, 0))
 		&& (!glob->port || glob->port == port))
 	      {
 		pthread_testcancel ();
