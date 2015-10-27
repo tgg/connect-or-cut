@@ -65,7 +65,7 @@ You can use connect-or-cut to:
 
 ## Roadmap
 
- * Fix issues. Not specifying any rule makes iceweasel crash
+ * Fix issues.
  * Add a wrapper script to ease invocation
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
