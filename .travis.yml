@@ -6,3 +6,6 @@ os:
   - linux
   - osx
 script: make
+matrix:
+  allow_failures:
+    - os: osx
