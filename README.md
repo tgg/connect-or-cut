@@ -1,4 +1,4 @@
-# connect-or-cut
+# connect-or-cut [![Build Status](https://travis-ci.org/tgg/connect-or-cut.svg)](https://travis-ci.org/tgg/connect-or-cut)
 
 Stateless LD_PRELOAD based poor man's firewall.
 
