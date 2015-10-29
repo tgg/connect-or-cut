@@ -15,7 +15,7 @@ This is similar to a firewall, except that:
 
 ## Installation
 
-Provided you have a C compiler, GNU make on a Unix box:
+Provided you have a C compiler, GNU or BSD make on a Unix box:
 
     $ git clone https://github.com/tgg/connect-or-cut.git
 
@@ -57,9 +57,13 @@ You can use connect-or-cut to:
 
  * It does not work with statically linked programs.
  * Only outgoing connection using TCP over IPv4 work for now.
- * Tested only on:
+ * Tested on:
    * Debian GNU/Linux with gcc and clang
+   * OmniOS r151014 with gcc (so it should work on Solaris)
    * Mac OS X 10.4 with gcc
+   * FreeBSD 10.2 with clang
+   * NetBSD 7 with gcc
+   * OpenBSD 5.8 with gcc
 
    Portability patches welcome!
 
