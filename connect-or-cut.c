@@ -64,7 +64,7 @@
 
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #include <sys/param.h>
-#if defined(BSD)
+#if defined(BSD) || (defined(__sun) && defined(__SVR4))
 #define HAVE_GETPROGNAME
 #endif
 #endif
