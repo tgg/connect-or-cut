@@ -1,0 +1,67 @@
+#!/bin/sh
+
+LIBEXT="so"
+P=`dirname $0`
+
+_warn() {
+    cat >&2 <<EOF
+coc: $*
+EOF
+}
+
+_die() {
+    _warn $*
+    exit 1
+}
+
+_version() {
+    strings "${P}/libconnect-or-cut.${LIBEXT}" 2>/dev/null | grep 'connect-or-cut v'
+    if test $? -ne 0; then
+	_die "couldn't find connect-or-cut version!"
+    fi
+}
+
+_help() {
+	cat <<EOF
+Usage: coc [OPTION]... COMMAND [ARGS]
+Prevent connections to blocked addresses in COMMAND
+
+OPTIONS:
+ -a, --allow=ADDRESS[:PORT]	Allow connections to ADDRESS[:PORT]
+ -b, --block=ADDRESS[:PORT]	Prevent connections to ADDRESS[:PORT]
+ -h, --help                	Print this help message.
+ -l, --log-target=LOG      	Where to log. LOG is a comma-separated list
+                           	that can contain the following values:
+                           	  - stderr	This is the default
+                           	  - syslog	Write to syslog
+                           	  - file	Write to COMMAND.coc file
+ -L, --log-level=LEVEL     	What to log. LEVEL can contain one of the
+                           	following values:
+                           	  - silent	Do not log anything
+                           	  - error	Log errors
+                           	  - block	Log errors and blocked
+                           	                connections
+                           	  - allow	Log errors, blocked and
+                           	                allowed connections
+                           	  - debug	Log everything
+ -v, --version             	Print connect-or-cut version.
+EOF
+}
+
+if test "a$1" = "a"; then
+    _warn Missing argument!
+    _help >&2
+    exit 1
+fi
+
+case "$1" in
+    -h|--help)
+	_help
+	exit 0
+	;;
+
+    -v|--version)
+	_version
+	exit 0
+	;;
+esac
