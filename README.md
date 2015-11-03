@@ -47,7 +47,7 @@ You can use connect-or-cut to:
 
  * `COC_ALLOW` is a comma separated list of addresses to allow
  * `COC_BLOCK` is a comma separated list of addresses to block
- * `COC_LOG_LEVEL` defines the level of log, from `0` (silent) to `4' (debug)
+ * `COC_LOG_LEVEL` defines the level of log, from `0` (silent) to `4` (debug)
  * `COC_LOG_TARGET` is a bitwise between the following values:
    * `1` log to stderr
    * `2` log to syslog
