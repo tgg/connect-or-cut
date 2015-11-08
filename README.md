@@ -69,8 +69,7 @@ You can use connect-or-cut to:
 
 ## Roadmap
 
- * Fix issues.
- * Add a wrapper script to ease invocation
+ * Fix infinite loop when a glob is configured while DNS is not allowed
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
