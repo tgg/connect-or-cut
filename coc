@@ -1,4 +1,36 @@
 #!/bin/sh
+# connect-or-cut -- block unwanted connect() calls.
+#
+# Copyright (c) 2015, Thomas Girard <thomas.g.girard@free.fr>
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#
+#  * Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+#  * Neither the name of the author nor the names of its contributors
+#    may be used to endorse or promote products derived from this software
+#    without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
 
 EXT="so"
 P=`dirname $0`
@@ -24,10 +56,11 @@ _version() {
 
 _help() {
 	cat <<EOF
-Usage: coc [OPTION]... COMMAND [ARGS]
+Usage: coc [OPTION]... [--] COMMAND [ARGS]
 Prevent connections to blocked addresses in COMMAND.
 
 OPTIONS:
+ -A, --allow-dns           	Allow connections to DNS nameservers.
  -a, --allow=ADDRESS[:PORT]	Allow connections to ADDRESS[:PORT].
  -b, --block=ADDRESS[:PORT]	Prevent connections to ADDRESS[:PORT].
  -h, --help                	Print this help message.
@@ -53,17 +86,26 @@ _value() {
     echo "$1" | cut -d= -f2
 }
 
-_append() {
-    if test "a$3" = "a"; then
-	_die "missing value for \`$2' argument!"
+_ensure_arg() {
+    if test "a$2" = "a"; then
+	_die "missing value for \`$1' argument!"
     fi
+}
+
+_print_def() {
+    if eval test "a\$$1" != "a"; then
+	eval "echo $1=\$$1"
+	echo "export $1"
+    fi
+}
+
+_append() {
+    _ensure_arg "$2" "$3"
     eval $1="\$$1#$3"
 }
 
 _append_log_target() {
-    if test "a$2" = "a"; then
-	_die "missing value for \`$1' argument!"
-    fi
+    _ensure_arg "$1" "$2"
     OIFS=$IFS
     IFS=','
     for target in $2; do
@@ -79,14 +121,42 @@ _append_log_target() {
 		;;
 	    *)
 		_die "unknown log target \`$target'!"
+		;;
 	esac
     done
     IFS=$OIFS
+
+    # local variables are not portable, so unset them manually
+    unset target
+    unset OIFS
+}
+
+_set_log_level() {
+    _ensure_arg "$1" "$2"
+    case "$2" in
+	silent)
+	    COC_LOG_LEVEL=0
+	    ;;
+	error)
+	    COC_LOG_LEVEL=1
+	    ;;
+	block)
+	    COC_LOG_LEVEL=2
+	    ;;
+	allow)
+	    COC_LOG_LEVEL=3
+	    ;;
+	debug)
+	    COC_LOG_LEVEL=4
+	    ;;
+	*)
+	    _die "unknown log level \`$2'!"
+	    ;;
+    esac
 }
 
 if test "a$COC_LOG_TARGET" = "a"; then
     COC_LOG_TARGET=1
-    export COC_LOG_TARGET
 fi
 
 while test $# -gt 0; do
@@ -99,6 +169,14 @@ while test $# -gt 0; do
 	-v|--version)
 	    _version
 	    exit 0
+	    ;;
+
+	-A|--allow-dns)
+	    for n in `grep '^nameserver ' /etc/resolv.conf | cut -d' ' -f2`; do
+	        _append COC_ALLOW "$1" "$n:53"
+	    done
+	    unset n
+	    shift
 	    ;;
 
 	-a)
@@ -120,14 +198,27 @@ while test $# -gt 0; do
 	    _append COC_BLOCK "$1" "`_value $1`"
 	    shift
 	    ;;
+
 	-t)
 	    _append_log_target "$1" "$2"
 	    shift 2
 	    ;;
+
 	--log-target=*)
 	    _append_log_target "$1" "`_value $1`"
 	    shift
 	    ;;
+
+	-l)
+	    _set_log_level "$1" "$2"
+	    shift 2
+	    ;;
+
+	--log-level=*)
+	    _set_log_level "$1" "`_value $1`"
+	    shift
+	    ;;
+
 	--)
 	    shift
 	    break
@@ -140,12 +231,6 @@ while test $# -gt 0; do
     esac
 done
 
-if test $# -eq 0; then
-    _warn "missing command!"
-    _help >&2
-    exit 1
-fi
-
 if test "a$COC_ALLOW" != "a"; then
     COC_ALLOW="`echo $COC_ALLOW | sed -e 's/^.//' -e 's/#/;/g'`"
 fi
@@ -156,11 +241,33 @@ if test "a$COC_BLOCK" != "a"; then
 fi
 export COC_BLOCK
 
+if test $# -eq 0; then
+    if test \( "a$COC_ALLOW" != "a" \) -o \( "a$COC_BLOCK" != "a" \); then
+	for v in COC_ALLOW COC_BLOCK COC_LOG_TARGET COC_LOG_LEVEL; do
+	    _print_def $v
+	done
+	unset v
+	exit 0
+    else
+	_warn "missing command!"
+	_help >&2
+	exit 1
+    fi
+fi
+
+unset EXT
+unset P
+unset LIB
+
+export COC_LOG_TARGET
+export COC_LOG_LEVEL
+
 if test "a$LD_PRELOAD" != "a"; then
     LD_PRELOAD="$LIB:$LD_PRELOAD"
 else
     LD_PRELOAD="$LIB"
 fi
+
 export LD_PRELOAD
 
 exec "$@"
