@@ -63,7 +63,7 @@ If no COMMAND is specified but some addresses are configured to be allowed or
 blocked, then shell snippets to set the chosen configuration are displayed.
 
 OPTIONS:
- -A, --allow-dns           	Allow connections to DNS nameservers.
+ -d, --allow-dns           	Allow connections to DNS nameservers.
  -a, --allow=ADDRESS[:PORT]	Allow connections to ADDRESS[:PORT].
  -b, --block=ADDRESS[:PORT]	Prevent connections to ADDRESS[:PORT].
  -h, --help                	Print this help message.
@@ -174,7 +174,7 @@ while test $# -gt 0; do
 	    exit 0
 	    ;;
 
-	-A|--allow-dns)
+	-d|--allow-dns)
 	    for n in `grep '^nameserver ' /etc/resolv.conf | cut -d' ' -f2`; do
 	        _append COC_ALLOW "$1" "$n:53"
 	    done
