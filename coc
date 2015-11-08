@@ -59,6 +59,9 @@ _help() {
 Usage: coc [OPTION]... [--] COMMAND [ARGS]
 Prevent connections to blocked addresses in COMMAND.
 
+If no COMMAND is specified but some addresses are configured to be allowed or
+blocked, then shell snippets to set the chosen configuration are displayed.
+
 OPTIONS:
  -A, --allow-dns           	Allow connections to DNS nameservers.
  -a, --allow=ADDRESS[:PORT]	Allow connections to ADDRESS[:PORT].
@@ -94,7 +97,7 @@ _ensure_arg() {
 
 _print_def() {
     if eval test "a\$$1" != "a"; then
-	eval "echo $1=\$$1"
+	eval "echo $1=\'\$$1\'"
 	echo "export $1"
     fi
 }
@@ -222,6 +225,10 @@ while test $# -gt 0; do
 	--)
 	    shift
 	    break
+	    ;;
+
+	-*)
+	    _die "unknown \`$1' argument!"
 	    ;;
 
 	*)
