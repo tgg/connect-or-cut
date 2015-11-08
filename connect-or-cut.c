@@ -166,7 +166,7 @@ static const char *log_target_env_var = NULL;
 static const char *preload_env_var = NULL;
 #endif
 
-static const char version[] = "connect-or-cut v0.9.0-SNAPSHOT";
+static const char version[] = "connect-or-cut v0.9.0";
 static volatile bool initialized = false;
 static bool needs_dns_lookup = false;
 static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
