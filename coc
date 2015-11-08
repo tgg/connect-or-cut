@@ -48,7 +48,7 @@ _die() {
 }
 
 _version() {
-    strings "$LIB" 2>/dev/null | grep 'connect-or-cut v'
+    strings "$LIB" 2>/dev/null | grep 'connect-or-cut v' | uniq
     if test $? -ne 0; then
 	_die "couldn't find connect-or-cut version!"
     fi
