@@ -32,8 +32,12 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 
+_abs_dirname() {
+    (cd `dirname $1` && pwd)
+}
+
 EXT="so"
-P=`dirname $0`
+P=`_abs_dirname $0`
 LIB="${P}/libconnect-or-cut.${EXT}"
 
 _warn() {
