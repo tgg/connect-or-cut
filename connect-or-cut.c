@@ -435,7 +435,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	}
 
-      else if (c == '-')
+      else if (c == '-' || c == '_')
 	{
 	  if (!(type & ~(COC_IPV4_ADDR | COC_IPV6_ADDR)) || p == str)
 	    {
