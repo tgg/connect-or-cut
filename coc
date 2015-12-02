@@ -31,6 +31,8 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
+OGLOB=`set +o | grep glob`
+set -f
 
 _abs_dirname() {
     (cd `dirname $1` && pwd)
@@ -243,19 +245,19 @@ while test $# -gt 0; do
 done
 
 if test "a$COC_ALLOW" != "a"; then
-    COC_ALLOW="`echo $COC_ALLOW | sed -e 's/^.//' -e 's/#/;/g'`"
+    COC_ALLOW="`echo $COC_ALLOW | sed -e 's/^#//' -e 's/#/;/g'`"
 fi
 export COC_ALLOW
 
 if test "a$COC_BLOCK" != "a"; then
-    COC_BLOCK="`echo $COC_BLOCK | sed -e 's/^.//' -e 's/#/;/g'`"
+    COC_BLOCK="`echo $COC_BLOCK | sed -e 's/^#//' -e 's/#/;/g'`"
 fi
 export COC_BLOCK
 
 if test $# -eq 0; then
     if test \( "a$COC_ALLOW" != "a" \) -o \( "a$COC_BLOCK" != "a" \); then
 	for v in COC_ALLOW COC_BLOCK COC_LOG_TARGET COC_LOG_LEVEL; do
-	    _print_def $v
+	    _print_def "$v"
 	done
 	unset v
 	exit 0
@@ -281,4 +283,6 @@ fi
 
 export LD_PRELOAD
 
+eval $OGLOB
+unset OGLOB
 exec "$@"
