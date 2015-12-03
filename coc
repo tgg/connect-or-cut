@@ -113,6 +113,27 @@ _append_env_var() {
     eval $1="\$$1#$3"
 }
 
+_append_preload() {
+    case `uname -s` in
+	Darwin)
+	    preload=DYLD_INSERT_LIBRARIES
+	    ;;
+
+	*)
+	    preload=LD_PRELOAD
+	    ;;
+    esac
+
+    if eval test "a\$$preload" != "a"; then
+	eval $preload="$LIB:\$$preload"
+    else
+	eval $preload="$LIB"
+    fi
+    export $preload
+
+    unset preload
+}
+
 _append_log_target() {
     _ensure_arg "$1" "$2"
     OIFS=$IFS
@@ -274,13 +295,7 @@ unset P
 export COC_LOG_TARGET
 export COC_LOG_LEVEL
 
-if test "a$LD_PRELOAD" != "a"; then
-    LD_PRELOAD="$LIB:$LD_PRELOAD"
-else
-    LD_PRELOAD="$LIB"
-fi
-
-export LD_PRELOAD
+_append_preload
 unset LIB
 
 eval $OGLOB
