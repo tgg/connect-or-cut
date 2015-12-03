@@ -48,6 +48,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -394,8 +395,16 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	{
 	  if ((type & COC_IPV4_ADDR) == COC_IPV4_ADDR)
 	    {
-	      /* TODO overflow */
-	      segment = segment * 10 + (c - '0');
+	      /* INT30-C */
+	      if ((segment > UINT16_MAX / 10) ||
+		  (UINT16_MAX - (c - '0') < segment * 10))
+		{
+		  DIE ("invalid IPV4 segment, aborting\n");
+		}
+	      else
+		{
+		  segment = segment * 10 + (c - '0');
+		}
 
 	      if (segment > 255)
 		{
@@ -495,8 +504,16 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
 	  if (isdigit (u))
 	    {
-	      /* TODO overflow */
-	      port = port * 10 + (u - '0');
+	      /* INT30-C */
+	      if ((port > UINT16_MAX / 10) ||
+		  (UINT16_MAX - (u - '0') < port * 10))
+		{
+		  DIE ("invalid port number, aborting\n");
+		}
+	      else
+		{
+		  port = port * 10 + (u - '0');
+		}
 	    }
 
 	  else if (isalnum (u) || u == '-')
