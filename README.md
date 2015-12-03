@@ -23,6 +23,10 @@ Provided you have a C compiler, GNU or BSD make on a Unix box:
 
     $ make os=$(uname -s)
 
+If you want to compile it for 32 bits:
+
+    $ make os=$(uname -s) bits=32
+
 
 ## Using it
 
@@ -55,7 +59,7 @@ You can use connect-or-cut to:
 
 ## Limitations
 
- * It does not work with statically linked programs.
+ * It does not work with statically linked programs.  For example Go programs.
  * Only outgoing connection using TCP over IPv4 work for now.
  * Tested on:
    * Debian GNU/Linux with gcc and clang
@@ -70,6 +74,7 @@ You can use connect-or-cut to:
 ## Roadmap
 
  * Fix infinite loop when a glob is configured while DNS is not allowed
+ * Test 32 and 64 bit
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
