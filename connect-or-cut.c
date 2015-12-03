@@ -152,7 +152,7 @@ DEFINE_COC_STRUCT (glob, char *);
 extern char *__progname;
 
 static inline const char *
-getprogname()
+getprogname ()
 {
   return __progname;
 }
@@ -247,7 +247,7 @@ strndup (const char *s, size_t n)
       len = n;
     }
 
-  char * ns = (char *) malloc (len + 1);
+  char *ns = (char *) malloc (len + 1);
 
   if (ns != NULL)
     {
@@ -797,7 +797,7 @@ coc_init (void)
 
       if ((log_target & COC_FILE_LOG) == COC_FILE_LOG)
 	{
-	  const char *progname = getprogname();
+	  const char *progname = getprogname ();
 	  log_file_name = malloc (strlen (progname) + 5);
 	  strcpy (log_file_name, progname);
 	  strcat (log_file_name, ".coc");
