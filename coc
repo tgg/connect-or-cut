@@ -270,7 +270,6 @@ fi
 
 unset EXT
 unset P
-unset LIB
 
 export COC_LOG_TARGET
 export COC_LOG_LEVEL
@@ -282,6 +281,7 @@ else
 fi
 
 export LD_PRELOAD
+unset LIB
 
 eval $OGLOB
 unset OGLOB
