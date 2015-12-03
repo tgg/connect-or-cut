@@ -146,7 +146,11 @@ DEFINE_COC_STRUCT (glob, char *);
 #define COC_BLOCK_ENV_VAR_NAME "COC_BLOCK"
 #define COC_LOG_LEVEL_ENV_VAR_NAME "COC_LOG_LEVEL"
 #define COC_LOG_TARGET_ENV_VAR_NAME "COC_LOG_TARGET"
+#if defined(__APPLE__) && defined(__MACH__)
+#define COC_PRELOAD_ENV_VAR_NAME "DYLD_INSERT_LIBRARIES"
+#else
 #define COC_PRELOAD_ENV_VAR_NAME "LD_PRELOAD"
+#endif
 
 #ifndef HAVE_GETPROGNAME
 extern char *__progname;
@@ -414,6 +418,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		    }
 		  else
 		    {
+		      coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG %hd... is not an IPv4 segment\n", segment);
 		      type &= ~COC_IPV4_ADDR;
 		    }
 		}
@@ -565,7 +570,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
   host = strndup (str, service ? service - str - skip_last : len);
 
-  coc_log (COC_DEBUG_LOG_LEVEL, "%s rule for connection to %s:%hu -- %s\n",
+  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG %s rule for connection to %s:%hu -- %s\n",
 	   rule_type_name[rule_type], host, port, address_type_name[type]);
 
   switch (type)
@@ -828,7 +833,7 @@ coc_init (void)
 		  getenv (COC_PRELOAD_ENV_VAR_NAME));
 
   /* let's hide ourselves */
-  coc_log (COC_DEBUG_LOG_LEVEL, "Hiding\n");
+  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG hiding\n");
   unsetenv (COC_ALLOW_ENV_VAR_NAME);
   unsetenv (COC_BLOCK_ENV_VAR_NAME);
   unsetenv (COC_LOG_LEVEL_ENV_VAR_NAME);
@@ -954,7 +959,7 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 int
 execve (const char *filename, char *const argv[], char *const envp[])
 {
-  coc_log (COC_DEBUG_LOG_LEVEL, "Unhiding before running %s\n", filename);
+  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG unhiding before running %s\n", filename);
   size_t size = 0, i;
   const char **p = (const char **) envp;
 
