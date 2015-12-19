@@ -59,7 +59,9 @@ You can use connect-or-cut to:
 
 ## Limitations
 
- * It does not work with statically linked programs.  For example Go programs.
+ * connect-or-cut does not work for programs:
+   * performing connect syscall directly;
+   * statically linked (e.g. Go binaries)
  * Only outgoing connection using TCP over IPv4 work for now.
  * Tested on:
    * Debian GNU/Linux with gcc and clang
