@@ -1,6 +1,6 @@
 /* connect-or-cut -- block unwanted connect() calls.
  *
- * Copyright (c) 2015, Thomas Girard <thomas.g.girard@free.fr>
+ * Copyright Ⓒ 2015, 2016  Thomas Girard <thomas.g.girard@free.fr>
  *
  * All rights reserved.
  *
@@ -419,7 +419,9 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		    }
 		  else
 		    {
-		      coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG %hd... is not an IPv4 segment\n", segment);
+		      coc_log (COC_DEBUG_LOG_LEVEL,
+			       "DEBUG %hd... is not an IPv4 segment\n",
+			       segment);
 		      type &= ~COC_IPV4_ADDR;
 		    }
 		}
@@ -571,7 +573,8 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
   host = strndup (str, service ? service - str - skip_last : len);
 
-  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG %s rule for connection to %s:%hu -- %s\n",
+  coc_log (COC_DEBUG_LOG_LEVEL,
+	   "DEBUG %s rule for connection to %s:%hu -- %s\n",
 	   rule_type_name[rule_type], host, port, address_type_name[type]);
 
   switch (type)
@@ -742,7 +745,7 @@ coc_env_keep (const char *name, const char *value)
 #define NS "nameserver "
 
 static void
-coc_read_resolv (in_addr_t *out)
+coc_read_resolv (in_addr_t * out)
 {
   char buffer[1024];
   FILE *resolv = fopen ("/etc/resolv.conf", "r");
@@ -880,10 +883,10 @@ coc_init (void)
 	    for (i = 0; i < MAXNS; i++)
 	      {
 		if (ipv4->addr.s_addr == dns_addresses[i])
-		{
-		  dns_server_found = true;
-		  break;
-		}
+		  {
+		    dns_server_found = true;
+		    break;
+		  }
 	      }
 	  }
       }
@@ -1030,7 +1033,8 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 int
 execve (const char *filename, char *const argv[], char *const envp[])
 {
-  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG unhiding before running %s\n", filename);
+  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG unhiding before running %s\n",
+	   filename);
   size_t size = 0, i;
   const char **p = (const char **) envp;
 
