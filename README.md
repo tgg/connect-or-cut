@@ -27,17 +27,54 @@ If you want to compile it for 32 bits:
 
     $ make os=$(uname -s) bits=32
 
+If you want to compile it with debug information:
+
+    $ CFLAGS=-g make os=$(uname -s)
+
 
 ## Using it
 
-    $ LD_PRELOAD=./libconnect-or-cut.so COC_ALLOW='212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net' COC_BLOCK='*' iceweasel
+    $ ./coc -d -a '*.google.com' -a '*.1e100.net' -b '*' iceweasel
 
+Or to do it manually:
+
+    $ LD_PRELOAD=./libconnect-or-cut.so COC_ALLOW='212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net' COC_BLOCK='*' iceweasel
 
 This invokes chromium, allowing only outgoing connection to my ISP
 provided name servers, to all google.com and 1e100.net addresses.
 
 Everything else will be blocked, with connection blocking messages
 displayed on stderr.
+
+`coc` is a helper script that will set appropriate variables for you:
+
+    $ ./coc -h
+    Usage: coc [OPTION]... [--] COMMAND [ARGS]
+    Prevent connections to blocked addresses in COMMAND.
+    
+    If no COMMAND is specified but some addresses are configured to be allowed or
+    blocked, then shell snippets to set the chosen configuration are displayed.
+    
+    OPTIONS:
+     -d, --allow-dns           	Allow connections to DNS nameservers.
+     -a, --allow=ADDRESS[:PORT]	Allow connections to ADDRESS[:PORT].
+     -b, --block=ADDRESS[:PORT]	Prevent connections to ADDRESS[:PORT].
+     -h, --help                	Print this help message.
+     -t, --log-target=LOG      	Where to log. LOG is a comma-separated list
+                               	that can contain the following values:
+                               	  - stderr	This is the default
+                               	  - syslog	Write to syslog
+                               	  - file	Write to COMMAND.coc file
+     -l, --log-level=LEVEL     	What to log. LEVEL can contain one of the
+                               	following values:
+                               	  - silent	Do not log anything
+                               	  - error	Log errors
+                               	  - block	Log errors and blocked
+                               	            connections
+                               	  - allow	Log errors, blocked and
+                               	            allowed connections
+                               	  - debug	Log everything
+    -v, --version             	Print connect-or-cut version.
 
 ## Use cases
 
@@ -48,6 +85,8 @@ You can use connect-or-cut to:
  3. Filter out advertising sites during your web navigation
 
 ## Environment variables
+
+Again, `coc` helper script should be used to do the heavy-lifting here.
 
  * `COC_ALLOW` is a comma separated list of addresses to allow
  * `COC_BLOCK` is a comma separated list of addresses to block
@@ -75,7 +114,6 @@ You can use connect-or-cut to:
 
 ## Roadmap
 
- * Fix infinite loop when a glob is configured while DNS is not allowed
  * Test 32 and 64 bit
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
