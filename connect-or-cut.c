@@ -44,6 +44,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <resolv.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -738,6 +739,43 @@ coc_env_keep (const char *name, const char *value)
 }
 #endif
 
+#define NS "nameserver "
+
+static void
+coc_read_resolv (in_addr_t *out)
+{
+  char buffer[1024];
+  FILE *resolv = fopen ("/etc/resolv.conf", "r");
+
+  if (!resolv)
+    {
+      DIE ("Could not read /etc/resolv.conf, aborting\n");
+    }
+
+  size_t index = 0;
+
+  while (fgets (buffer, sizeof (buffer), resolv) && index < MAXNS)
+    {
+      if (!strncmp (buffer, NS, sizeof (NS) - 1))
+	{
+	  char *ns = buffer + sizeof (NS) - 1;
+	  size_t len = strlen (ns);
+
+	  if (ns[len - 1] == '\n')
+	    {
+	      ns[len - 1] = '\0';
+	    }
+
+	  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG Found nameserver: %s\n", ns);
+
+	  inet_pton (AF_INET, ns, &out[index++]);
+	}
+    }
+
+  fclose (resolv);
+}
+
+
 /* Called by dynamic linker when library is loaded. */
 void coc_init (void) __attribute__ ((constructor));
 
@@ -822,6 +860,39 @@ coc_init (void)
 
   char *block = getenv (COC_BLOCK_ENV_VAR_NAME);
   coc_rules_add (block, COC_BLOCK);
+
+  /* Fail if there is a glob and DNS is not allowed. */
+  if (needs_dns_lookup)
+    {
+      bool dns_server_found = false;
+
+      /* Read nameserver entries in /etc/resolv.conf */
+      in_addr_t dns_addresses[MAXNS] = { 0 };
+      coc_read_resolv (dns_addresses);
+
+      /* Cycle in al allowed IP entries to check if we have one of these */
+      coc_ipv4_entry_t *ipv4;
+      SLIST_FOREACH (ipv4, &ipv4_list_head[COC_ALLOW], entries)
+      {
+	if (!ipv4->port || ipv4->port == htons (53))
+	  {
+	    size_t i;
+	    for (i = 0; i < MAXNS; i++)
+	      {
+		if (ipv4->addr.s_addr == dns_addresses[i])
+		{
+		  dns_server_found = true;
+		  break;
+		}
+	      }
+	  }
+      }
+
+      if (!dns_server_found)
+	{
+	  DIE ("No DNS allowed while some glob rule need one, aborting\n");
+	}
+    }
 
 #ifdef COC_STEALTH
   allow_env_var = coc_env_keep (COC_ALLOW_ENV_VAR_NAME, allow);
