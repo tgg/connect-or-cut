@@ -40,7 +40,7 @@ Or to do it manually:
 
     $ LD_PRELOAD=./libconnect-or-cut.so COC_ALLOW='212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net' COC_BLOCK='*' iceweasel
 
-This invokes chromium, allowing only outgoing connection to my ISP
+This invokes iceweasel, allowing only outgoing connection to my ISP
 provided name servers, to all google.com and 1e100.net addresses.
 
 Everything else will be blocked, with connection blocking messages
