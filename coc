@@ -1,7 +1,7 @@
 #!/bin/sh
 # connect-or-cut -- block unwanted connect() calls.
 #
-# Copyright (c) 2015, Thomas Girard <thomas.g.girard@free.fr>
+# Copyright Ⓒ 2015, 2016  Thomas Girard <thomas.g.girard@free.fr>
 #
 # All rights reserved.
 #
