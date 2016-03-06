@@ -940,7 +940,6 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
       in_port_t port = sa->sin_port;
       in_addr_t ipv4_address = sa->sin_addr.s_addr;
 
-      /* TODO this is needed only for info +test return code. */
       char str4[INET_ADDRSTRLEN];
       inet_ntop (AF_INET, &(sa->sin_addr), str4, INET_ADDRSTRLEN);
 
