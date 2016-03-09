@@ -1,7 +1,6 @@
-32_SUFFIX := -32
 SRC := connect-or-cut.c
 OBJ := $(SRC:.c=.o)
-TGT := libconnect-or-cut${${bits}_SUFFIX}.so
+TGT := libconnect-or-cut.so
 
 OPTION_STEALTH_1 := -DCOC_STEALTH
 

@@ -114,7 +114,6 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 
 ## Roadmap
 
- * Test 32 and 64 bit
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
