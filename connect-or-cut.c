@@ -164,7 +164,7 @@ getprogname ()
 }
 #endif
 
-static const char version[] = "connect-or-cut v1.0.0-SNAPSHOT";
+static const char version[] = "connect-or-cut v1.0.0";
 static volatile bool initialized = false;
 static bool needs_dns_lookup = false;
 static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
