@@ -40,6 +40,16 @@ _abs_dirname() {
 
 EXT=".so"
 P="`_abs_dirname $0`/"
+
+case "${P}" in
+    /usr/bin/)
+	P=""
+	;;
+    */bin/)
+	P=`echo ${P} | sed -e 's#/bin/$#/lib/#'`
+	;;
+esac
+
 LIB="${P}libconnect-or-cut${EXT}"
 
 _warn() {
@@ -54,9 +64,13 @@ _die() {
 }
 
 _version() {
-    strings "$LIB" 2>/dev/null | grep 'connect-or-cut v' | uniq
-    if test $? -ne 0; then
-	_die "couldn't find connect-or-cut version!"
+    V=`strings "$LIB" 2>/dev/null | grep 'connect-or-cut v' | uniq`
+    if test "a$V" = "a"; then
+	unset V
+	_die "couldn't find connect-or-cut version in $LIB!"
+    else
+	echo $V
+	unset V
     fi
 }
 
