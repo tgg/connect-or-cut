@@ -92,6 +92,7 @@ OPTIONS:
                            	  - stderr	This is the default
                            	  - syslog	Write to syslog
                            	  - file	Write to COMMAND.coc file
+ -p, --log-path=PATH      	Path for file log.
  -l, --log-level=LEVEL     	What to log. LEVEL can contain one of the
                            	following values:
                            	  - silent	Do not log anything
@@ -175,6 +176,15 @@ _append_log_target() {
     unset OIFS
 }
 
+_set_log_path() {
+    _ensure_arg "$1" "$2"
+    if test -d "$2"; then
+	COC_LOG_PATH="$2"
+    else
+	_die "no such directory \`$2'!"
+    fi
+}
+
 _set_log_level() {
     _ensure_arg "$1" "$2"
     case "$2" in
@@ -253,6 +263,16 @@ while test $# -gt 0; do
 	    shift
 	    ;;
 
+	-p)
+	    _set_log_path "$1" "$2"
+	    shift 2
+	    ;;
+
+	--log-path=*)
+	    _set_log_path "$1" "`_value $1`"
+	    shift
+	    ;;
+
 	-l)
 	    _set_log_level "$1" "$2"
 	    shift 2
@@ -291,7 +311,7 @@ export COC_BLOCK
 
 if test $# -eq 0; then
     if test \( "a$COC_ALLOW" != "a" \) -o \( "a$COC_BLOCK" != "a" \); then
-	for v in COC_ALLOW COC_BLOCK COC_LOG_TARGET COC_LOG_LEVEL; do
+	for v in COC_ALLOW COC_BLOCK COC_LOG_TARGET COC_LOG_LEVEL COC_LOG_PATH; do
 	    _print_def "$v"
 	done
 	unset v
@@ -308,6 +328,7 @@ unset P
 
 export COC_LOG_TARGET
 export COC_LOG_LEVEL
+export COC_LOG_PATH
 
 _append_preload
 unset LIB

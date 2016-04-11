@@ -65,6 +65,7 @@ displayed on stderr.
                                	  - stderr	This is the default
                                	  - syslog	Write to syslog
                                	  - file	Write to COMMAND.coc file
+     -p, --log-path=PATH      	Path for file log.
      -l, --log-level=LEVEL     	What to log. LEVEL can contain one of the
                                	following values:
                                	  - silent	Do not log anything

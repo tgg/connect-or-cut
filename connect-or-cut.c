@@ -146,6 +146,7 @@ DEFINE_COC_STRUCT (glob, char *);
 #define COC_ALLOW_ENV_VAR_NAME "COC_ALLOW"
 #define COC_BLOCK_ENV_VAR_NAME "COC_BLOCK"
 #define COC_LOG_LEVEL_ENV_VAR_NAME "COC_LOG_LEVEL"
+#define COC_LOG_PATH_ENV_VAR_NAME "COC_LOG_PATH"
 #define COC_LOG_TARGET_ENV_VAR_NAME "COC_LOG_TARGET"
 #if defined(__APPLE__) && defined(__MACH__)
 #define COC_PRELOAD_ENV_VAR_NAME "DYLD_INSERT_LIBRARIES"
@@ -800,9 +801,13 @@ coc_init (void)
       if ((log_target & COC_FILE_LOG) == COC_FILE_LOG)
 	{
 	  const char *progname = getprogname ();
-	  log_file_name = malloc (strlen (progname) + 5);
-	  strcpy (log_file_name, progname);
-	  strcat (log_file_name, ".coc");
+	  const char *log_path = getenv (COC_LOG_PATH_ENV_VAR_NAME);
+	  if (!log_path)
+	    {
+	      log_path = ".";
+	    }
+	  log_file_name = malloc (strlen (log_path) + strlen (progname) + 6);
+	  sprintf (log_file_name, "%s/%s.coc", log_path, progname);
 	}
     }
 
