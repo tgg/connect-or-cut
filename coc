@@ -38,9 +38,9 @@ _abs_dirname() {
     (cd `dirname $1` && pwd)
 }
 
-EXT="so"
-P=`_abs_dirname $0`
-LIB="${P}/libconnect-or-cut.${EXT}"
+EXT=".so"
+P="`_abs_dirname $0`/"
+LIB="${P}libconnect-or-cut${EXT}"
 
 _warn() {
     cat >&2 <<EOF
