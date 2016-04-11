@@ -163,15 +163,6 @@ getprogname ()
 }
 #endif
 
-#ifdef COC_STEALTH
-static size_t env_var_kept = 0;
-static const char *allow_env_var = NULL;
-static const char *block_env_var = NULL;
-static const char *log_level_env_var = NULL;
-static const char *log_target_env_var = NULL;
-static const char *preload_env_var = NULL;
-#endif
-
 static const char version[] = "connect-or-cut v1.0.0-SNAPSHOT";
 static volatile bool initialized = false;
 static bool needs_dns_lookup = false;
@@ -723,25 +714,6 @@ coc_long_value (const char *name, const char *value, long lower_bound,
 static int (*real_connect) (int fd, const struct sockaddr * addr,
 			    socklen_t addrlen);
 
-#ifdef COC_STEALTH
-static int (*real_execve) (const char *filename, char *const argv[],
-			   char *const envp[]);
-
-static char *
-coc_env_keep (const char *name, const char *value)
-{
-  if (value == NULL)
-    {
-      return NULL;
-    }
-
-  char *kept = malloc (strlen (name) + strlen (value) + 2);
-  sprintf (kept, "%s=%s", name, value);
-  env_var_kept++;
-  return kept;
-}
-#endif
-
 #define NS "nameserver "
 
 static void
@@ -798,22 +770,6 @@ coc_init (void)
 
       DIE ("%s\n", error);
     }
-
-#ifdef COC_STEALTH
-  real_execve = dlsym (RTLD_NEXT, "execve");
-
-  if (real_execve == NULL)
-    {
-      char *error = dlerror ();
-
-      if (error == NULL)
-	{
-	  error = "execve is NULL";
-	}
-
-      DIE ("%s\n", error);
-    }
-#endif
 
   char *level = getenv (COC_LOG_LEVEL_ENV_VAR_NAME);
   if (level)
@@ -896,25 +852,6 @@ coc_init (void)
 	  DIE ("No DNS allowed while some glob rule need one, aborting\n");
 	}
     }
-
-#ifdef COC_STEALTH
-  allow_env_var = coc_env_keep (COC_ALLOW_ENV_VAR_NAME, allow);
-  block_env_var = coc_env_keep (COC_BLOCK_ENV_VAR_NAME, block);
-  log_level_env_var = coc_env_keep (COC_LOG_LEVEL_ENV_VAR_NAME, level);
-  log_target_env_var = coc_env_keep (COC_LOG_TARGET_ENV_VAR_NAME, target);
-  preload_env_var =
-    coc_env_keep (COC_PRELOAD_ENV_VAR_NAME,
-		  getenv (COC_PRELOAD_ENV_VAR_NAME));
-
-  /* let's hide ourselves */
-  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG hiding\n");
-  unsetenv (COC_ALLOW_ENV_VAR_NAME);
-  unsetenv (COC_BLOCK_ENV_VAR_NAME);
-  unsetenv (COC_LOG_LEVEL_ENV_VAR_NAME);
-  unsetenv (COC_LOG_TARGET_ENV_VAR_NAME);
-  /* TODO we should only remove our library, not others. */
-  unsetenv (COC_PRELOAD_ENV_VAR_NAME);
-#endif
 
   initialized = true;
 }
@@ -1027,52 +964,3 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 
   return real_connect (fd, addr, addrlen);
 }
-
-#ifdef COC_STEALTH
-int
-execve (const char *filename, char *const argv[], char *const envp[])
-{
-  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG unhiding before running %s\n",
-	   filename);
-  size_t size = 0, i;
-  const char **p = (const char **) envp;
-
-  while (*p)
-    {
-      p++;
-      size++;
-    }
-
-  char *const *nenvp =
-    (char *const *) malloc (sizeof (char *) * (size + env_var_kept + 1));
-  p = (const char **) nenvp;
-  for (i = 0; i < size; i++)
-    {
-      *p++ = envp[i];
-    }
-
-  if (allow_env_var)
-    {
-      *p++ = allow_env_var;
-    }
-  if (block_env_var)
-    {
-      *p++ = block_env_var;
-    }
-  if (log_level_env_var)
-    {
-      *p++ = log_level_env_var;
-    }
-  if (log_target_env_var)
-    {
-      *p++ = log_target_env_var;
-    }
-  if (preload_env_var)
-    {
-      *p++ = preload_env_var;
-    }
-  *p = NULL;
-
-  return real_execve (filename, argv, nenvp);
-}
-#endif
