@@ -2,6 +2,10 @@
 
 Stateless LD_PRELOAD based poor man's firewall.
 
+## Demo
+
+[![asciicast](https://asciinema.org/a/66ggwn843r9qudwi13nyn5ru0.png)](https://asciinema.org/a/66ggwn843r9qudwi13nyn5ru0)
+
 ## What it is
 
 connect-or-cut is a small library to interpose with LD_PRELOAD to a
