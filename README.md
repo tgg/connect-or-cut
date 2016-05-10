@@ -4,7 +4,7 @@ Stateless LD_PRELOAD based poor man's firewall.
 
 ## Demo
 
-[![asciicast](https://asciinema.org/a/66ggwn843r9qudwi13nyn5ru0.png)](https://asciinema.org/a/66ggwn843r9qudwi13nyn5ru0)
+[![asciicast](https://asciinema.org/a/66ggwn843r9qudwi13nyn5ru0.png)](https://asciinema.org/a/66ggwn843r9qudwi13nyn5ru0?autoplay=1&speed=2)
 
 ## What it is
 
