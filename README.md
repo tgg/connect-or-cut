@@ -119,6 +119,10 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 
 ## Roadmap
 
+ * Fix bugs with:
+   * empty block and no glob (PLA)
+   * WARN if localhost is not allowed
+   * bug with machine name not being fully qualified
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
