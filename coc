@@ -40,17 +40,19 @@ _abs_dirname() {
 
 EXT=".so"
 P="`_abs_dirname $0`/"
+F=`echo ${P} | sed -e 's#/bin/$#/lib/#'`
 
 case "${P}" in
     /usr/bin/)
 	P=""
 	;;
     */bin/)
-	P=`echo ${P} | sed -e 's#/bin/$#/lib/#'`
+	P="$F"
 	;;
 esac
 
 LIB="${P}libconnect-or-cut${EXT}"
+FLIB="${F}libconnect-or-cut${EXT}"
 
 _warn() {
     cat >&2 <<EOF
@@ -64,10 +66,10 @@ _die() {
 }
 
 _version() {
-    V=`strings "$LIB" 2>/dev/null | grep 'connect-or-cut v' | uniq`
+    V=`strings "$FLIB" 2>/dev/null | grep 'connect-or-cut v' | uniq`
     if test "a$V" = "a"; then
 	unset V
-	_die "couldn't find connect-or-cut version in $LIB!"
+	_die "couldn't find connect-or-cut version in $FLIB!"
     else
 	echo $V
 	unset V
@@ -325,6 +327,7 @@ fi
 
 unset EXT
 unset P
+unset F
 
 export COC_LOG_TARGET
 export COC_LOG_LEVEL
@@ -332,6 +335,7 @@ export COC_LOG_PATH
 
 _append_preload
 unset LIB
+unset FLIB
 
 eval $OGLOB
 unset OGLOB
