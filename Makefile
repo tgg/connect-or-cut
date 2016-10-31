@@ -6,6 +6,8 @@ LIB := libconnect-or-cut.so
 TGT := $(LIB).$(VER)
 LNK := $(LIB).$(ABI)
 
+DESTDIR ?= /usr/local
+
 OPTION_STEALTH_1 := -DCOC_STEALTH
 
 32_CFLAGS        := -m32
@@ -29,3 +31,11 @@ $(TGT): $(OBJ)
 	$(CC) -shared -Wl,-soname,$(LNK) -o $(TGT) $(OBJ) $(LDFLAGS)
 	rm -f $(LNK)
 	ln -s $(TGT) $(LNK)
+
+.PHONY: install
+install: $(TGT)
+	mkdir -p $(DESTDIR)/bin
+	install -m755 coc $(DESTDIR)/bin
+	mkdir -p $(DESTDIR)/lib
+	install -m755 $(TGT) $(DESTDIR)/lib
+	(cd $(DESTDIR)/lib && rm -f $(LNK) && ln -s $(TGT) $(LNK))
