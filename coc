@@ -147,8 +147,6 @@ _append_preload() {
 	eval $preload="$LIB"
     fi
     export $preload
-
-    unset preload
 }
 
 _append_log_target() {
@@ -316,7 +314,8 @@ if test $# -eq 0; then
 	for v in COC_ALLOW COC_BLOCK COC_LOG_TARGET COC_LOG_LEVEL COC_LOG_PATH; do
 	    _print_def "$v"
 	done
-	unset v
+	_append_preload
+	_print_def "$preload"
 	exit 0
     else
 	_warn "missing command!"
@@ -334,6 +333,7 @@ export COC_LOG_LEVEL
 export COC_LOG_PATH
 
 _append_preload
+unset preload
 unset LIB
 unset FLIB
 
