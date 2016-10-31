@@ -1,6 +1,10 @@
 SRC := connect-or-cut.c
 OBJ := $(SRC:.c=.o)
-TGT := libconnect-or-cut.so
+ABI := 1
+VER := $(ABI).0.1
+LIB := libconnect-or-cut.so
+TGT := $(LIB).$(VER)
+LNK := $(LIB).$(ABI)
 
 OPTION_STEALTH_1 := -DCOC_STEALTH
 
@@ -19,7 +23,9 @@ all: $(TGT)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJ) $(TGT)
+	rm -f $(OBJ) $(TGT) $(LNK)
 
 $(TGT): $(OBJ)
-	$(CC) -shared -o $(TGT) $(OBJ) $(LDFLAGS)
+	$(CC) -shared -Wl,-soname,$(LNK) -o $(TGT) $(OBJ) $(LDFLAGS)
+	rm -f $(LNK)
+	ln -s $(TGT) $(LNK)

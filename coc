@@ -38,7 +38,7 @@ _abs_dirname() {
     (cd `dirname $1` && pwd)
 }
 
-EXT=".so"
+EXT=".so.1"
 P="`_abs_dirname $0`/"
 F=`echo ${P} | sed -e 's#/bin/$#/lib/#'`
 
