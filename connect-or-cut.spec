@@ -52,10 +52,11 @@ CFLAGS="-O2 -g -Wall" make %{?_smp_mflags} os=$(uname -s) bits=%{bits}
 %install
 rm -rf %{buildroot}
 %ifarch noarch
-mkdir -p %{buildroot}/%{_bindir}
-install -m755 coc %{buildroot}/%{_bindir}
+mkdir -p %{buildroot}%{_bindir}
+install -m755 coc %{buildroot}%{_bindir}
 %else
-make install DESTDIR=%{buildroot} DESTLIB=%{buildroot}/%{_libdir}
+make install DESTBIN=%{buildroot}%{_bindir} DESTLIB=%{buildroot}%{_libdir}
+rm %{buildroot}%{_bindir}/coc
 %endif
 
 
