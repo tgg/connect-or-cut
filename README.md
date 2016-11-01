@@ -110,7 +110,6 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
  * Tested on:
    * Debian GNU/Linux with gcc and clang
    * OmniOS r151014 with gcc (so it should work on Solaris)
-   * Mac OS X 10.4 with gcc
    * FreeBSD 10.2 with clang
    * NetBSD 7 with gcc
    * OpenBSD 5.8 with gcc
@@ -126,6 +125,16 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    This will require parsing /etc/hosts by hand, given that:
    - getnameinfo does not provide access to aliases
    - gethostbyaddr/gethostent, which do, are not reentrant on all platforms
+
+ * Compilation broken on Mac OS X (or macOS) because of SONAME
+
+## News
+
+ * Version 1.0.1
+   * Add some consistency checks
+   * Use a SONAME (this broke Mac OS X compilation)
+   * Provide RPM package
+   * `coc` script now display LD_PRELOAD when used in dry mode
 
 ## Roadmap
 
