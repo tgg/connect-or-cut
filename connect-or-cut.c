@@ -164,7 +164,7 @@ getprogname ()
 }
 #endif
 
-static const char version[] = "connect-or-cut v1.0.0";
+static const char version[] = "connect-or-cut v1.0.1-SNAPSHOT";
 static volatile bool initialized = false;
 static bool needs_dns_lookup = false;
 static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
@@ -751,6 +751,11 @@ coc_read_resolv (in_addr_t * out)
   fclose (resolv);
 }
 
+const char * const
+coc_version (void)
+{
+  return version;
+}
 
 /* Called by dynamic linker when library is loaded. */
 void coc_init (void) __attribute__ ((constructor));
