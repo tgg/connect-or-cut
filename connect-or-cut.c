@@ -573,6 +573,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
     {
     case COC_IPV6_ADDR:
       {
+	DIE ("IPv6 is not supported yet, aborting\n");
 	coc_ipv6_entry_t *ipv6 = coc_ipv6_entry_alloc ();
 	inet_pton (AF_INET6, host, &ipv6->addr);
 	coc_ipv6_rule_insert (ipv6, NULL, htons (port), rule_type);
