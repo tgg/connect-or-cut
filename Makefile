@@ -37,6 +37,6 @@ $(TGT): $(OBJ)
 install: $(TGT)
 	mkdir -p $(DESTDIR)/bin
 	install -m755 coc $(DESTDIR)/bin
-	mkdir -p $(DESTDIR)/lib
+	mkdir -p $(DESTLIB)
 	install -m755 $(TGT) $(DESTLIB)
 	(cd $(DESTLIB) && rm -f $(LNK) && ln -s $(TGT) $(LNK))
