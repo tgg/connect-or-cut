@@ -752,7 +752,7 @@ coc_read_resolv (in_addr_t * out)
   fclose (resolv);
 }
 
-const char * const
+const char *
 coc_version (void)
 {
   return version;
