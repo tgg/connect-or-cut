@@ -117,12 +117,19 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 
    Portability patches welcome!
 
+## Known issues
+
+ * Aliases from /etc/hosts are not honoured. For instance if a machine is
+   aliased and the long name conforms to a pattern it will be missed.
+   The workaround for this is to add the short name to the rule set.
+
+   This will require parsing /etc/hosts by hand, given that:
+   - getnameinfo does not provide access to aliases
+   - gethostbyaddr/gethostent, which do, are not reentrant on all platforms
+
 ## Roadmap
 
- * Fix bugs with:
-   * empty block and no glob (PLA)
-   * WARN if localhost is not allowed
-   * bug with machine name not being fully qualified
+ * WARN if localhost is not allowed
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
