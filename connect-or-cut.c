@@ -829,6 +829,12 @@ coc_init (void)
   coc_rules_add (allow, COC_ALLOW);
 
   char *block = getenv (COC_BLOCK_ENV_VAR_NAME);
+
+  if (block == NULL && needs_dns_lookup)
+    {
+      DIE ("Glob specified for ALLOW rule but no rule for BLOCK; aborting\n");
+    }
+
   coc_rules_add (block, COC_BLOCK);
 
   /* Fail if there is a glob and DNS is not allowed. */
