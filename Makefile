@@ -7,6 +7,7 @@ TGT := $(LIB).$(VER)
 LNK := $(LIB).$(ABI)
 
 DESTDIR ?= /usr/local
+DESTLIB ?= $(DESTDIR)/lib
 
 OPTION_STEALTH_1 := -DCOC_STEALTH
 
@@ -37,5 +38,5 @@ install: $(TGT)
 	mkdir -p $(DESTDIR)/bin
 	install -m755 coc $(DESTDIR)/bin
 	mkdir -p $(DESTDIR)/lib
-	install -m755 $(TGT) $(DESTDIR)/lib
-	(cd $(DESTDIR)/lib && rm -f $(LNK) && ln -s $(TGT) $(LNK))
+	install -m755 $(TGT) $(DESTLIB)
+	(cd $(DESTLIB) && rm -f $(LNK) && ln -s $(TGT) $(LNK))
