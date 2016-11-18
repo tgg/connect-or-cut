@@ -66,9 +66,14 @@
 
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #include <sys/param.h>
-#if defined(BSD) || (defined(__sun) && defined(__SVR4))
+#if defined(BSD)
 #define HAVE_GETPROGNAME
 #endif
+#endif
+
+#if (defined(sun) || defined(__sun)) && (defined(__SVR4) || defined(__svr4__))
+#define HAVE_GETEXECNAME
+#include <libgen.h>
 #endif
 
 typedef enum coc_addr_type
@@ -139,9 +144,9 @@ DEFINE_COC_SLIST (glob);
     SLIST_INSERT_HEAD (&name##_list_head[rule], e, entries); \
   }
 
-DEFINE_COC_STRUCT (ipv4, struct in_addr);
-DEFINE_COC_STRUCT (ipv6, struct in6_addr);
-DEFINE_COC_STRUCT (glob, char *);
+DEFINE_COC_STRUCT (ipv4, struct in_addr)
+DEFINE_COC_STRUCT (ipv6, struct in6_addr)
+DEFINE_COC_STRUCT (glob, char *)
 
 #define COC_ALLOW_ENV_VAR_NAME "COC_ALLOW"
 #define COC_BLOCK_ENV_VAR_NAME "COC_BLOCK"
@@ -154,7 +159,15 @@ DEFINE_COC_STRUCT (glob, char *);
 #define COC_PRELOAD_ENV_VAR_NAME "LD_PRELOAD"
 #endif
 
-#ifndef HAVE_GETPROGNAME
+#if defined(HAVE_GETEXECNAME)
+static inline const char *
+getprogname ()
+{
+  const char *fullpath = getexecname ();
+  return basename ((char *) fullpath);
+}
+
+#elif !defined(HAVE_GETPROGNAME)
 extern char *__progname;
 
 static inline const char *
@@ -171,9 +184,11 @@ static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
 static coc_log_target_t log_target = COC_STDERR_LOG;
 static char *log_file_name = NULL;
 
+#ifndef __SUNPRO_C
 static void
 coc_log (coc_log_level_t level, const char *format, ...)
 __attribute__ ((__format__ (__printf__, 2, 3)));
+#endif
 
 static void
 coc_log (coc_log_level_t level, const char *format, ...)
@@ -192,9 +207,19 @@ coc_log (coc_log_level_t level, const char *format, ...)
 	  va_list ap;
 	  va_start (ap, format);
 	  FILE *log_stream = fopen (log_file_name, "a");
-	  fprintf (log_stream, "%s", buffer);
-	  vfprintf (log_stream, format, ap);
-	  fclose (log_stream);
+
+	  if (!log_stream)
+            {
+              fprintf (stderr, "Unable to create log file %s; discarding file logs\n", log_file_name);
+              log_target &= ~COC_FILE_LOG;
+            }
+          else
+            {
+	      fprintf (log_stream, "%s", buffer);
+	      vfprintf (log_stream, format, ap);
+	      fclose (log_stream);
+	    }
+
 	  va_end (ap);
 	}
 
@@ -759,12 +784,16 @@ coc_version (void)
 }
 
 /* Called by dynamic linker when library is loaded. */
+#ifdef __SUNPRO_C
+#pragma init (coc_init)
+#else
 void coc_init (void) __attribute__ ((constructor));
+#endif
 
 void
 coc_init (void)
 {
-  real_connect = dlsym (RTLD_NEXT, "connect");
+  real_connect = (int (*) (int, const struct sockaddr *, socklen_t)) dlsym (RTLD_NEXT, "connect");
 
   if (real_connect == NULL)
     {
