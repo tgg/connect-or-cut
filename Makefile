@@ -14,8 +14,8 @@ OPTION_STEALTH_1 := -DCOC_STEALTH
 
 32_CFLAGS        := -m32
 32_LDFLAGS       := -m32
-Linux_LDFLAGS    := -ldl
-Darwin_LDFLAGS   := -ldl
+Linux_LDFLAGS    := -ldl -Wl,-soname,$(LNK)
+Darwin_LDFLAGS   := -ldl -Wl,-dylib_install_name,$(LNK)
 
 CC      += -pthread
 CFLAGS  += -Wall -fPIC ${${os}_CFLAGS} ${${bits}_CFLAGS}
@@ -30,7 +30,7 @@ clean:
 	rm -f $(OBJ) $(TGT) $(LNK)
 
 $(TGT): $(OBJ)
-	$(CC) -shared -Wl,-soname,$(LNK) -o $(TGT) $(OBJ) $(LDFLAGS)
+	$(CC) -shared -o $(TGT) $(OBJ) $(LDFLAGS)
 	rm -f $(LNK)
 	ln -s $(TGT) $(LNK)
 
