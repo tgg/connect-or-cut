@@ -14,6 +14,7 @@ OPTION_STEALTH_1 := -DCOC_STEALTH
 
 32_CFLAGS        := -m32
 32_LDFLAGS       := -m32
+SunOS_LDFLAGS    := -lsocket -lnsl -h $(LNK)
 Linux_LDFLAGS    := -ldl -Wl,-soname,$(LNK)
 Darwin_LDFLAGS   := -ldl -Wl,-dylib_install_name,$(LNK)
 
