@@ -783,6 +783,29 @@ coc_version (void)
   return version;
 }
 
+static inline void
+coc_sym_connect (void)
+{
+  if (real_connect == NULL)
+    {
+      real_connect =
+	(int (*)(int, const struct sockaddr *, socklen_t)) dlsym (RTLD_NEXT,
+								  "connect");
+
+      if (real_connect == NULL)
+	{
+	  char *error = dlerror ();
+
+	  if (error == NULL)
+	    {
+	      error = "connect is NULL";
+	    }
+
+	  DIE ("%s\n", error);
+	}
+    }
+}
+
 /* Called by dynamic linker when library is loaded. */
 #ifdef __SUNPRO_C
 #pragma init (coc_init)
@@ -793,19 +816,7 @@ void coc_init (void) __attribute__ ((constructor));
 void
 coc_init (void)
 {
-  real_connect = (int (*) (int, const struct sockaddr *, socklen_t)) dlsym (RTLD_NEXT, "connect");
-
-  if (real_connect == NULL)
-    {
-      char *error = dlerror ();
-
-      if (error == NULL)
-	{
-	  error = "connect is NULL";
-	}
-
-      DIE ("%s\n", error);
-    }
+  coc_sym_connect ();
 
   char *level = getenv (COC_LOG_LEVEL_ENV_VAR_NAME);
   if (level)
@@ -912,6 +923,11 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 {
   if (!initialized)
     {
+      /* With SELinux enabled `connect' gets called for audit purpose
+         _before_ `coc_init' so we ensure we have the real `connect'
+	 symbol address here to avoid segfaulting. */
+      coc_sym_connect ();
+
       /* Do not check connections if initialization is not complete. */
       return real_connect (fd, addr, addrlen);
     }
