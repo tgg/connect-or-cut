@@ -126,23 +126,30 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    - getnameinfo does not provide access to aliases
    - gethostbyaddr/gethostent, which do, are not reentrant on all platforms
 
- * Compilation broken on Mac OS X (or macOS) because of SONAME
-
 ## News
 
- * Version 1.0.1
+ * Version 1.0.2
+   * Linking fixes for macOS (untested)
+   * Compilation fixes for Solaris; tested on Solaris 10 with Sun CC
+   * Bug fixed:
+     * Crash before initialization when SELinux is enabled
+     * Crash when log file could not be created
+
+ * Version 1.0.1 (2016-11-01)
    * Add some consistency checks
    * Use a SONAME (this broke Mac OS X compilation)
    * Provide RPM package
    * `coc` script now display LD_PRELOAD when used in dry mode
 
+ * Version 1.0.0 (2016-04-12)
+
 ## Roadmap
 
  * WARN if localhost is not allowed
+ * Port on Windows
  * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
    * else check against BLOCK list and BLOCK connection if it's in it;
    * else ALLOW by default
  * Implement `accept` filtering
- * Port on Windows

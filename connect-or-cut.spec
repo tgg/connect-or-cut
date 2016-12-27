@@ -9,7 +9,7 @@
 %endif
 
 Name:           %{libname}%{libver}
-Version:        1.0.1
+Version:        1.0.2
 Release:        1%{?dist}
 Summary:        Stateless LD_PRELOAD based poor man's firewall
 
