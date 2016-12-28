@@ -76,13 +76,14 @@
 #include <libgen.h>
 #endif
 
-typedef enum coc_addr_type
+typedef enum coc_address_type
 {
   COC_IPV4_ADDR = 1 << 0,	/* 1 */
   COC_IPV6_ADDR = 1 << 1,	/* 2 */
-  COC_GLOB_ADDR = 1 << 2,	/* 4 */
-  COC_HOST_ADDR = 1 << 3	/* 8 */
-} coc_adress_type_t;
+  COC_GLOB_ADDR = 1 << 2	/* 4 */
+} coc_address_type_t;
+
+#define COC_HOST_ADDR (1 << 3)  /* 8 */
 
 typedef enum coc_log_level
 {
@@ -100,8 +101,11 @@ typedef enum coc_log_target
   COC_FILE_LOG = 1 << 2		/* 4 */
 } coc_log_target_t;
 
-#define COC_ALLOW ((size_t) 0)
-#define COC_BLOCK ((size_t) 1)
+typedef enum coc_rule_type
+{
+  COC_ALLOW = 0,
+  COC_BLOCK = 1
+} coc_rule_type_t;
 
 static const char *rule_type_name[] = {
   "ALLOW",
@@ -115,38 +119,26 @@ static const char *address_type_name[] = {
   [COC_HOST_ADDR] = "host"
 };
 
-#define DEFINE_COC_SLIST(name) \
-  SLIST_HEAD(coc_##name##_list, coc_##name##_entry) \
-  name##_list_head[COC_BLOCK + 1] = { { NULL }, { NULL } }
+typedef struct coc_entry {
+  union {
+    struct in_addr ipv4;
+    struct in6_addr ipv6;
+    char *glob;
+  } addr;
+  in_port_t port;
+  coc_address_type_t addr_type;
+  coc_rule_type_t rule_type;
+  SLIST_ENTRY(coc_entry) entries;
+} coc_entry_t;
 
-DEFINE_COC_SLIST (ipv4);
-DEFINE_COC_SLIST (ipv6);
-DEFINE_COC_SLIST (glob);
+static inline
+coc_entry_t *
+coc_entry_alloc (void)
+{
+  return (coc_entry_t *) malloc (sizeof(coc_entry_t));
+}
 
-#define DEFINE_COC_STRUCT(name, type)      \
-  typedef struct coc_##name##_entry { \
-    type addr; \
-    in_port_t port; \
-    SLIST_ENTRY(coc_##name##_entry) entries; \
-  } coc_##name##_entry_t; \
-  \
-  static inline coc_##name##_entry_t * coc_##name##_entry_alloc () \
-  { \
-   return (coc_##name##_entry_t *) malloc (sizeof(coc_##name##_entry_t)); \
-  } \
-  \
-  static inline void \
-  coc_##name##_rule_insert(coc_##name##_entry_t *e, \
-			   type *address, in_port_t port, size_t rule)	\
-  { \
-    if (address != NULL) e->addr = *address; \
-    e->port = port; \
-    SLIST_INSERT_HEAD (&name##_list_head[rule], e, entries); \
-  }
-
-DEFINE_COC_STRUCT (ipv4, struct in_addr)
-DEFINE_COC_STRUCT (ipv6, struct in6_addr)
-DEFINE_COC_STRUCT (glob, char *)
+SLIST_HEAD(coc_list, coc_entry) coc_list_head = { NULL };
 
 #define COC_ALLOW_ENV_VAR_NAME "COC_ALLOW"
 #define COC_BLOCK_ENV_VAR_NAME "COC_BLOCK"
@@ -598,28 +590,37 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
     {
     case COC_IPV6_ADDR:
       {
-	DIE ("IPv6 is not supported yet, aborting\n");
-	coc_ipv6_entry_t *ipv6 = coc_ipv6_entry_alloc ();
-	inet_pton (AF_INET6, host, &ipv6->addr);
-	coc_ipv6_rule_insert (ipv6, NULL, htons (port), rule_type);
+	coc_entry_t *e = coc_entry_alloc ();
+	e->rule_type = rule_type;
+	e->addr_type = COC_IPV6_ADDR;
+	e->port = htons (port);
+	inet_pton (AF_INET6, host, &e->addr.ipv6); /* TODO rc */
+	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	free (host);
 	break;
       }
 
     case COC_IPV4_ADDR:
       {
-	coc_ipv4_entry_t *ipv4 = coc_ipv4_entry_alloc ();
-	inet_pton (AF_INET, host, &ipv4->addr);
-	coc_ipv4_rule_insert (ipv4, NULL, htons (port), rule_type);
+	coc_entry_t *e = coc_entry_alloc ();
+	e->rule_type = rule_type;
+	e->addr_type = COC_IPV4_ADDR;
+	e->port = htons (port);
+	inet_pton (AF_INET, host, &e->addr.ipv4);
+	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	free (host);
 	break;
       }
 
     case COC_GLOB_ADDR:
       {
+	coc_entry_t *e = coc_entry_alloc ();
+	e->rule_type = rule_type;
+	e->addr_type = COC_GLOB_ADDR;
+	e->port = htons (port);
 	/* Here we transfer ownership of `host' to the entry. */
-	coc_glob_rule_insert (coc_glob_entry_alloc (), &host, htons (port),
-			      rule_type);
+	e->addr.glob = host;
+	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 
 	/* Do not perform DNS lookups for '*' rules. We don't need to. */
 	if (host[0] != '*' || host[1] != '\0')
@@ -656,16 +657,24 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    if (aip->ai_family == AF_INET)
 	      {
 		struct sockaddr_in *sa = (struct sockaddr_in *) aip->ai_addr;
-		coc_ipv4_rule_insert (coc_ipv4_entry_alloc (), &sa->sin_addr,
-				      htons (port), rule_type);
+		coc_entry_t *e = coc_entry_alloc ();
+		e->rule_type = rule_type;
+		e->addr_type = COC_IPV4_ADDR;
+		e->port = htons (port);
+		e->addr.ipv4 = sa->sin_addr;
+		SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	      }
 
 	    else if (aip->ai_family == AF_INET6)
 	      {
 		struct sockaddr_in6 *sa =
 		  (struct sockaddr_in6 *) aip->ai_addr;
-		coc_ipv6_rule_insert (coc_ipv6_entry_alloc (), &sa->sin6_addr,
-				      htons (port), rule_type);
+		coc_entry_t *e = coc_entry_alloc ();
+		e->rule_type = rule_type;
+		e->addr_type = COC_IPV6_ADDR;
+		e->port = htons (port);
+		e->addr.ipv6 = sa->sin6_addr;
+		SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	      }
 	  }
 
@@ -857,26 +866,25 @@ coc_init (void)
 	}
     }
 
-  /* Initialize our singly-linked lists. */
-  SLIST_INIT (&ipv4_list_head[COC_ALLOW]);
-  SLIST_INIT (&ipv4_list_head[COC_BLOCK]);
-  SLIST_INIT (&ipv6_list_head[COC_ALLOW]);
-  SLIST_INIT (&ipv6_list_head[COC_BLOCK]);
-  SLIST_INIT (&glob_list_head[COC_ALLOW]);
-  SLIST_INIT (&glob_list_head[COC_BLOCK]);
-
-  char *allow = getenv (COC_ALLOW_ENV_VAR_NAME);
-  coc_rules_add (allow, COC_ALLOW);
+  /* Initialize our singly-linked list. */
+  SLIST_INIT (&coc_list_head);
 
   char *block = getenv (COC_BLOCK_ENV_VAR_NAME);
 
+#ifdef UNBREAK_ME
   if (block == NULL && needs_dns_lookup)
     {
       DIE ("Glob specified for ALLOW rule but no rule for BLOCK; aborting\n");
     }
+#endif
 
   coc_rules_add (block, COC_BLOCK);
 
+  char *allow = getenv (COC_ALLOW_ENV_VAR_NAME);
+  coc_rules_add (allow, COC_ALLOW);
+
+
+#ifdef UNBREAK_ME
   /* Fail if there is a glob and DNS is not allowed. */
   if (needs_dns_lookup)
     {
@@ -887,10 +895,10 @@ coc_init (void)
       coc_read_resolv (dns_addresses);
 
       /* Cycle in al allowed IP entries to check if we have one of these */
-      coc_ipv4_entry_t *ipv4;
-      SLIST_FOREACH (ipv4, &ipv4_list_head[COC_ALLOW], entries)
+      coc_entry_t *e;
+      SLIST_FOREACH (e, &coc_list_head, entries)
       {
-	if (!ipv4->port || ipv4->port == htons (53))
+	if (!e->port || e->port == htons (53))
 	  {
 	    size_t i;
 	    for (i = 0; i < MAXNS; i++)
@@ -909,14 +917,71 @@ coc_init (void)
 	  DIE ("No DNS allowed while some glob rule need one, aborting\n");
 	}
     }
+#endif
 
   initialized = true;
+}
+
+#define INETX_PORT(a) \
+  (a->sa_family == AF_INET ? \
+   ((const struct sockaddr_in *) a)->sin_port : ((const struct sockaddr_in6 *) a)->sin6_port)
+
+#define INETX_ADDR(a) \
+  (a->sa_family == AF_INET ? \
+   (void *) &((const struct sockaddr_in *) a)->sin_addr : \
+   (void *) &((const struct sockaddr_in6 *) a)->sin6_addr)
+
+static inline
+bool
+coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
+{
+  switch (e->addr_type)
+    {
+    case COC_IPV6_ADDR:
+      if (addr->sa_family == AF_INET6)
+	{
+	  return (IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, INETX_ADDR (addr)) &&
+		  (!e->port || e->port == INETX_PORT (addr)));
+	}
+      else if (addr->sa_family == AF_INET)
+	{
+	  if (IN6_IS_ADDR_V4MAPPED (&e->addr.ipv6))
+	    {
+	      /* TODO */
+	    }
+	}
+      break;
+
+    case COC_IPV4_ADDR:
+      if (addr->sa_family == AF_INET)
+	{
+	  const struct sockaddr_in *sa = (const struct sockaddr_in *) addr;
+	  in_addr_t ipv4_address = sa->sin_addr.s_addr;
+	  return (e->addr.ipv4.s_addr == ipv4_address &&
+		  (!e->port || e->port == INETX_PORT (addr)));
+	}
+      else if (addr->sa_family == AF_INET6)
+	{
+	  if (IN6_IS_ADDR_V4MAPPED (INETX_ADDR (addr)))
+	    {
+	      /* TODO */
+	    }
+	}
+      break;
+
+    case COC_GLOB_ADDR:
+      return (((e->addr.glob[0] == '*' && e->addr.glob[1] == '\0')
+	       || !fnmatch (e->addr.glob, buf, 0))
+	      && (!e->port || e->port == INETX_PORT (addr)));
+    }
+
+  return false;
 }
 
 /*
  * Real work happens here.
  *
- * We don't do anything except for AF_INET.
+ * We don't do anything except for AF_INET and AF_INET6.
  */
 int
 connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
@@ -933,14 +998,16 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
     }
 
   /* We only support IPv4 for now */
-  if (addr != NULL && addr->sa_family == AF_INET)
+  if (addr != NULL &&
+      (addr->sa_family == AF_INET || addr->sa_family == AF_INET6))
     {
-      const struct sockaddr_in *sa = (const struct sockaddr_in *) addr;
-      in_port_t port = sa->sin_port;
-      in_addr_t ipv4_address = sa->sin_addr.s_addr;
+      char str[INET6_ADDRSTRLEN];
+      in_port_t port = INETX_PORT (addr);
+      inet_ntop (addr->sa_family, INETX_ADDR (addr), str, INET6_ADDRSTRLEN);
 
-      char str4[INET_ADDRSTRLEN];
-      inet_ntop (AF_INET, &(sa->sin_addr), str4, INET_ADDRSTRLEN);
+      char hbuf[NI_MAXHOST] = "*";
+
+      bool dns_lookup_done = !needs_dns_lookup;
 
       /* We have access to IP address and port where the
        * connection is requested.
@@ -951,76 +1018,52 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
        *  2. If not, check if it's in the BLOCK rules:
        *     - if so, call pthread_testcancel, then return EACCES
        *  3. Otherwise proceed with regular connect call. */
-      coc_ipv4_entry_t *ipv4;
-      SLIST_FOREACH (ipv4, &ipv4_list_head[COC_ALLOW], entries)
+      coc_entry_t *e;
+      SLIST_FOREACH (e, &coc_list_head, entries)
       {
-	if (ipv4->addr.s_addr == ipv4_address
-	    && (!ipv4->port || ipv4->port == port))
+	char *where = NULL;
+
+	if (e->addr_type == COC_GLOB_ADDR)
 	  {
-	    coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n", str4,
-		     ntohs (port));
-	    return real_connect (fd, addr, addrlen);
-	  }
-      }
-
-      SLIST_FOREACH (ipv4, &ipv4_list_head[COC_BLOCK], entries)
-      {
-	if (ipv4->addr.s_addr == ipv4_address
-	    && (!ipv4->port || ipv4->port == port))
-	  {
-	    pthread_testcancel ();
-	    coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%d\n", str4,
-		     ntohs (port));
-	    return EACCES;
-	  }
-      }
-
-      char hbuf[NI_MAXHOST] = "*";
-      int rc = 0;
-
-      if (needs_dns_lookup)
-	{
-	  rc = getnameinfo (addr, addrlen, hbuf, sizeof (hbuf), NULL, 0,
-			    NI_NUMERICSERV);
-	}
-
-      if (rc == 0)
-	{
-
-	  coc_glob_entry_t *glob;
-	  SLIST_FOREACH (glob, &glob_list_head[COC_ALLOW], entries)
-	  {
-	    if (((glob->addr[0] == '*' && glob->addr[1] == '\0')
-		 || !fnmatch (glob->addr, hbuf, 0))
-		&& (!glob->port || glob->port == port))
+	    if (!dns_lookup_done)
 	      {
-		coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n",
-			 hbuf, ntohs (port));
+		int rc = getnameinfo (addr, addrlen, hbuf, sizeof (hbuf), NULL, 0,
+				      NI_NUMERICSERV);
+
+		if (rc)
+		  {
+		    coc_log (COC_BLOCK_ERROR_LEVEL, "ERROR resolving name: %s\n",
+			     gai_strerror (rc));
+		    continue;
+		  }
+	      }
+
+	    where = hbuf;
+	  }
+	else
+	  {
+	    where = str;
+	  }
+
+	if (coc_rule_match(e, addr, hbuf))
+	  {
+	    if (e->rule_type == COC_ALLOW)
+	      {
+		coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n", where,
+			 ntohs (port));
 		return real_connect (fd, addr, addrlen);
 	      }
-	  }
-
-	  SLIST_FOREACH (glob, &glob_list_head[COC_BLOCK], entries)
-	  {
-	    if (((glob->addr[0] == '*' && glob->addr[1] == '\0')
-		 || !fnmatch (glob->addr, hbuf, 0))
-		&& (!glob->port || glob->port == port))
+	    else
 	      {
 		pthread_testcancel ();
-		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%d\n",
-			 hbuf, ntohs (port));
+		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%d\n", where,
+			 ntohs (port));
 		return EACCES;
 	      }
 	  }
-	}
+      }
 
-      else
-	{
-	  coc_log (COC_BLOCK_ERROR_LEVEL, "ERROR resolving name: %s\n",
-		   gai_strerror (rc));
-	}
-
-      coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n", str4,
+      coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n", str,
 	       ntohs (port));
     }
 
