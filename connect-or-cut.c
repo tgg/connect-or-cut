@@ -922,13 +922,16 @@ coc_init (void)
   initialized = true;
 }
 
-#define INETX_PORT(a) \
-  (a->sa_family == AF_INET ? \
-   ((const struct sockaddr_in *) a)->sin_port : ((const struct sockaddr_in6 *) a)->sin6_port)
-
-#define INET4_ADDR(a) (&((const struct sockaddr_in *) a)->sin_addr)
-#define INET6_ADDR(a) (&((const struct sockaddr_in6 *) a)->sin6_addr)
-#define INETX_ADDR(a) (a->sa_family == AF_INET ? (void *) INET4_ADDR (a) : (void *) INET6_ADDR (a))
+#define INET4_FMLY(a) (a->sa_family == AF_INET)
+#define INET4_CAST(a) ((const struct sockaddr_in *) a)
+#define INET6_CAST(a) ((const struct sockaddr_in6 *) a)
+#define INET4_PORT(a) (INET4_CAST (a)->sin_port)
+#define INET6_PORT(a) (INET6_CAST (a)->sin6_port)
+#define INETX_PORT(a) (INET4_FMLY (a) ? INET4_PORT (a) : INET6_PORT (a))
+#define INET4_ADDR(a) (&INET4_CAST (a)->sin_addr)
+#define INET6_ADDR(a) (&INET6_CAST (a)->sin6_addr)
+#define INETX_ADDR(a) (INET4_FMLY (a) ? (void *) INET4_ADDR (a) : (void *) INET6_ADDR (a))
+#define INET4_IN_6(i) ((struct in_addr *) ((i)->s6_addr + 12))
 
 static inline
 bool
@@ -940,13 +943,14 @@ coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
       if (addr->sa_family == AF_INET6)
 	{
 	  return (IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, INET6_ADDR (addr)) &&
-		  (!e->port || e->port == INETX_PORT (addr)));
+		  (!e->port || e->port == INET6_PORT (addr)));
 	}
       else if (addr->sa_family == AF_INET)
 	{
 	  if (IN6_IS_ADDR_V4MAPPED (&e->addr.ipv6))
 	    {
-	      /* TODO */
+	      return (INET4_IN_6 (&e->addr.ipv6)->s_addr == INET4_ADDR (addr)->s_addr &&
+		      (!e->port || e->port == INET4_PORT (addr)));
 	    }
 	}
       break;
@@ -954,16 +958,15 @@ coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
     case COC_IPV4_ADDR:
       if (addr->sa_family == AF_INET)
 	{
-	  const struct sockaddr_in *sa = (const struct sockaddr_in *) addr;
-	  in_addr_t ipv4_address = sa->sin_addr.s_addr;
-	  return (e->addr.ipv4.s_addr == ipv4_address &&
-		  (!e->port || e->port == INETX_PORT (addr)));
+	  return (e->addr.ipv4.s_addr == INET4_ADDR (addr)->s_addr &&
+		  (!e->port || e->port == INET4_PORT (addr)));
 	}
       else if (addr->sa_family == AF_INET6)
 	{
 	  if (IN6_IS_ADDR_V4MAPPED (INET6_ADDR (addr)))
 	    {
-	      /* TODO */
+	      return (e->addr.ipv4.s_addr == INET4_IN_6 (INET6_ADDR (addr))->s_addr &&
+		      (!e->port || e->port == INET6_PORT (addr)));
 	    }
 	}
       break;
