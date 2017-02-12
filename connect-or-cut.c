@@ -1,6 +1,6 @@
 /* connect-or-cut -- block unwanted connect() calls.
  *
- * Copyright Ⓒ 2015, 2016  Thomas Girard <thomas.g.girard@free.fr>
+ * Copyright Ⓒ 2015, 2016, 2017  Thomas Girard <thomas.g.girard@free.fr>
  *
  * All rights reserved.
  *
