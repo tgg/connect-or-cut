@@ -870,19 +870,15 @@ coc_init (void)
   SLIST_INIT (&coc_list_head);
 
   char *block = getenv (COC_BLOCK_ENV_VAR_NAME);
-
-#ifdef UNBREAK_ME
-  if (block == NULL && needs_dns_lookup)
-    {
-      DIE ("Glob specified for ALLOW rule but no rule for BLOCK; aborting\n");
-    }
-#endif
-
   coc_rules_add (block, COC_BLOCK);
 
   char *allow = getenv (COC_ALLOW_ENV_VAR_NAME);
   coc_rules_add (allow, COC_ALLOW);
 
+  if (allow != NULL && block == NULL && needs_dns_lookup)
+    {
+      DIE ("Glob specified for ALLOW rule but no rule for BLOCK; aborting\n");
+    }
 
 #ifdef UNBREAK_ME
   /* Fail if there is a glob and DNS is not allowed. */
