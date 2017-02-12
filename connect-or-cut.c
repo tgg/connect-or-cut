@@ -87,7 +87,7 @@ typedef enum coc_addr_type
 typedef enum coc_log_level
 {
   COC_SILENT_LOG_LEVEL = -1,	/* mapped from 0. */
-  COC_BLOCK_ERROR_LEVEL = LOG_ERR,	/* mapped from 1 (to 3). */
+  COC_ERROR_LOG_LEVEL = LOG_ERR,	/* mapped from 1 (to 3). */
   COC_BLOCK_LOG_LEVEL = LOG_WARNING,	/* mapped from 2 (to 4). */
   COC_ALLOW_LOG_LEVEL = LOG_INFO,	/* mapped from 3 (to 6). */
   COC_DEBUG_LOG_LEVEL = LOG_DEBUG	/* mapped from 4 (to 7). */
@@ -254,7 +254,7 @@ coc_log (coc_log_level_t level, const char *format, ...)
 }
 
 #define DIE(...) do { \
-    coc_log (COC_BLOCK_ERROR_LEVEL,"ERROR " __VA_ARGS__); \
+    coc_log (COC_ERROR_LOG_LEVEL,"ERROR " __VA_ARGS__); \
     exit (EXIT_FAILURE); \
   } while (0)
 
@@ -823,7 +823,7 @@ coc_init (void)
     {
       static const coc_log_level_t map[] = {
 	COC_SILENT_LOG_LEVEL,
-	COC_BLOCK_ERROR_LEVEL,
+	COC_ERROR_LOG_LEVEL,
 	COC_BLOCK_LOG_LEVEL,
 	COC_ALLOW_LOG_LEVEL,
 	COC_DEBUG_LOG_LEVEL
@@ -1016,7 +1016,7 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 
       else
 	{
-	  coc_log (COC_BLOCK_ERROR_LEVEL, "ERROR resolving name: %s\n",
+	  coc_log (COC_ERROR_LOG_LEVEL, "ERROR resolving name: %s\n",
 		   gai_strerror (rc));
 	}
 
