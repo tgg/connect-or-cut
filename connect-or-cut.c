@@ -752,8 +752,16 @@ static int (*real_connect) (int fd, const struct sockaddr * addr,
 
 #define NS "nameserver "
 
+typedef struct coc_resolver {
+  union {
+    struct in_addr ipv4;
+    struct in6_addr ipv6;
+  } addr;
+  bool isv6;
+} coc_resolver_t;
+
 static void
-coc_read_resolv (in_addr_t * out)
+coc_read_resolv (coc_resolver_t * out, size_t * index)
 {
   char buffer[1024];
   FILE *resolv = fopen ("/etc/resolv.conf", "r");
@@ -763,9 +771,9 @@ coc_read_resolv (in_addr_t * out)
       DIE ("Could not read /etc/resolv.conf, aborting\n");
     }
 
-  size_t index = 0;
+  *index = 0;
 
-  while (fgets (buffer, sizeof (buffer), resolv) && index < MAXNS)
+  while (fgets (buffer, sizeof (buffer), resolv) && *index < MAXNS)
     {
       if (!strncmp (buffer, NS, sizeof (NS) - 1))
 	{
@@ -779,7 +787,18 @@ coc_read_resolv (in_addr_t * out)
 
 	  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG Found nameserver: %s\n", ns);
 
-	  inet_pton (AF_INET, ns, &out[index++]);
+	  if (inet_pton (AF_INET, ns, &out[*index].addr.ipv4) == 1)
+	    {
+	      out[(*index)++].isv6 = false;
+	    }
+	  else if (inet_pton (AF_INET6, ns, &out[*index].addr.ipv6) == 1)
+	    {
+	      out[(*index)++].isv6 = true;
+	    }
+	  else
+	    {
+	      DIE ("Cannot process nameserver: `%s'\n", ns);
+	    }
 	}
     }
 
@@ -880,26 +899,33 @@ coc_init (void)
       DIE ("Glob specified for ALLOW rule but no rule for BLOCK; aborting\n");
     }
 
-#ifdef UNBREAK_ME
   /* Fail if there is a glob and DNS is not allowed. */
   if (needs_dns_lookup)
     {
       bool dns_server_found = false;
 
       /* Read nameserver entries in /etc/resolv.conf */
-      in_addr_t dns_addresses[MAXNS] = { 0 };
-      coc_read_resolv (dns_addresses);
+      coc_resolver_t dns[MAXNS] = { 0 };
+      size_t dns_count;
+      coc_read_resolv (dns, &dns_count);
 
-      /* Cycle in al allowed IP entries to check if we have one of these */
+      /* Cycle in all allowed IP entries to check if we have one of these */
       coc_entry_t *e;
       SLIST_FOREACH (e, &coc_list_head, entries)
       {
-	if (!e->port || e->port == htons (53))
+	if (e->rule_type == COC_ALLOW &&
+	    e->addr_type != COC_GLOB_ADDR &&
+	    (!e->port || e->port == htons (53)))
 	  {
 	    size_t i;
-	    for (i = 0; i < MAXNS; i++)
+	    for (i = 0; i < dns_count; i++)
 	      {
-		if (ipv4->addr.s_addr == dns_addresses[i])
+		if ((e->addr_type == COC_IPV4_ADDR &&
+		     !dns[i].isv6 &&
+		     e->addr.ipv4.s_addr == dns[i].addr.ipv4.s_addr) ||
+		    (e->addr_type == COC_IPV6_ADDR &&
+		     dns[i].isv6 &&
+		     IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, &dns[i].addr.ipv6)))
 		  {
 		    dns_server_found = true;
 		    break;
@@ -913,7 +939,6 @@ coc_init (void)
 	  DIE ("No DNS allowed while some glob rule need one, aborting\n");
 	}
     }
-#endif
 
   initialized = true;
 }
@@ -995,7 +1020,6 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
       return real_connect (fd, addr, addrlen);
     }
 
-  /* We only support IPv4 for now */
   if (addr != NULL &&
       (addr->sa_family == AF_INET || addr->sa_family == AF_INET6))
     {
