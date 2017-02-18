@@ -34,28 +34,64 @@
 
 #define _GNU_SOURCE
 
+#ifndef _WIN32
 #include <arpa/inet.h>
-#include <assert.h>
-#include <ctype.h>
 #include <dlfcn.h>
-#include <errno.h>
 #include <fnmatch.h>
-#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <resolv.h>
+#include <sys/queue.h>
+#include <sys/socket.h>
+#include <syslog.h>
+#define SOCKET int
+#define HOOK(fn) fn
+#else
+#define _CRT_SECURE_NO_WARNINGS
+#include <SDKDDKVer.h>
+#define WIN32_LEAN_AND_MEAN
+#ifdef COC_EXPORTS
+#define COC_API __declspec(dllexport)
+#else
+#define COC_API __declspec(dllimport)
+#endif
+#define HOOK(fn) COC_API __stdcall hook_##fn
+#include <windows.h>
+#include <WinSock2.h>
+#include <Ws2tcpip.h>
+#include <Shlwapi.h>
+#include "sys_queue.h"
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "shlwapi.lib")
+#endif
+
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/queue.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <syslog.h>
 #include <time.h>
+
+#ifdef _WIN32
+typedef uint16_t in_port_t;
+#define MISSING_STRNDUP
+#define MAXNS 3
+#define LOG_ERR 3
+#define LOG_WARNING 4
+#define LOG_INFO 6
+#define LOG_DEBUG 7
+#define vsyslog(l,f,a) /* Not supported */
+#define pthread_testcancel() /* Not supported */
+#define localtime_r(ti,tm) localtime_s(tm, ti)
+#define fnmatch(p,s,f) PathMatchSpecA(s,p)
+#endif
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <AvailabilityMacros.h>
@@ -164,7 +200,11 @@ getprogname ()
 }
 
 #elif !defined(HAVE_GETPROGNAME)
+#ifdef _WIN32
+#define __progname _pgmptr
+#else
 extern char *__progname;
+#endif
 
 static inline const char *
 getprogname ()
@@ -180,7 +220,7 @@ static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
 static coc_log_target_t log_target = COC_STDERR_LOG;
 static char *log_file_name = NULL;
 
-#ifndef __SUNPRO_C
+#ifdef __GNUC__
 static void
 coc_log (coc_log_level_t level, const char *format, ...)
 __attribute__ ((__format__ (__printf__, 2, 3)));
@@ -829,6 +869,7 @@ coc_version (void)
 static inline void
 coc_sym_connect (void)
 {
+#ifndef _WIN32
   if (real_connect == NULL)
     {
       real_connect =
@@ -847,12 +888,31 @@ coc_sym_connect (void)
 	  DIE ("%s\n", error);
 	}
     }
+#endif
 }
+
+#ifdef _WIN32
+BOOL APIENTRY DllMain(HMODULE hModule,
+	DWORD  ul_reason_for_call,
+	LPVOID lpReserved
+)
+{
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
+		break;
+	}
+	return TRUE;
+}
+#endif
 
 /* Called by dynamic linker when library is loaded. */
 #ifdef __SUNPRO_C
 #pragma init (coc_init)
-#else
+#elif defined(__GNUC__)
 void coc_init (void) __attribute__ ((constructor));
 #endif
 
@@ -1022,7 +1082,7 @@ coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
  * We don't do anything except for AF_INET and AF_INET6.
  */
 int
-connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
+HOOK(connect (SOCKET fd, const struct sockaddr *addr, socklen_t addrlen))
 {
   if (!initialized)
     {
