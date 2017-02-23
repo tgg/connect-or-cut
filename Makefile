@@ -4,6 +4,7 @@ ABI := 1
 VER := $(ABI).0.2
 LIB := libconnect-or-cut.so
 TGT := $(LIB).$(VER)
+TST := tcpcontest
 LNK := $(LIB).$(ABI)
 
 DESTDIR ?= /usr/local
@@ -24,16 +25,19 @@ CPPFLAGS+= ${OPTION_STEALTH_${stealth}} ${${os}_CPPFLAGS}
 LDFLAGS += ${${os}_LDFLAGS} ${${bits}_LDFLAGS}
 
 .PHONY: all
-all: $(TGT)
+all: $(TGT) $(TST)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJ) $(TGT) $(LNK)
+	rm -f $(OBJ) $(TGT) $(LNK) $(TST)
 
 $(TGT): $(OBJ)
 	$(CC) -shared -o $(TGT) $(OBJ) $(LDFLAGS)
 	rm -f $(LNK)
 	ln -s $(TGT) $(LNK)
+
+$(TST): $(TST).o
+	$(CC) -o $(TST) $(TST).o $(LDFLAGS)
 
 .PHONY: install
 install: $(TGT)
