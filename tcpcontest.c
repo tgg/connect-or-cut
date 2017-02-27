@@ -32,6 +32,8 @@
  * SUCH DAMAGE.
  */
 
+#include <arpa/inet.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,11 +90,41 @@ main (int argc, char *argv[])
 	  continue;
 	}
 
-      rc = connect (s, rp->ai_addr, rp->ai_addrlen);
-      close (s);
-
-      if (rc != -1)
+      char str[INET6_ADDRSTRLEN];
+      void *sinaddr = NULL;
+      if (rp->ai_family == AF_INET)
 	{
+	  struct sockaddr_in *sinp = (struct sockaddr_in *) rp->ai_addr;
+	  sinaddr = &sinp->sin_addr;
+	}
+      else
+	{
+	  struct sockaddr_in6 *sin6p = (struct sockaddr_in6 *) rp->ai_addr;
+	  sinaddr = &sin6p->sin6_addr;
+	}
+
+      if (inet_ntop(rp->ai_family, sinaddr, str, INET6_ADDRSTRLEN) == NULL) {
+	perror("inet_ntop");
+	exit(EXIT_FAILURE);
+      }
+
+      rc = connect (s, rp->ai_addr, rp->ai_addrlen);
+
+      if (rc == 0)
+	{
+	  close (s);
+	  printf ("connect to %s OK\n", str);
+	  break;
+	}
+      else if (rc == -1)
+	{
+	  printf ("connect to %s KO: errno is %d (%s)\n", str, errno, strerror(errno));
+	  close (s);
+	}
+      else
+	{
+	  printf ("connect OK?: return code is %d\n", rc);
+	  close (s);
 	  break;
 	}
     }

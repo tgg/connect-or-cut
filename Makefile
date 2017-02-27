@@ -15,9 +15,12 @@ OPTION_STEALTH_1 := -DCOC_STEALTH
 
 32_CFLAGS        := -m32
 32_LDFLAGS       := -m32
-SunOS_LDFLAGS    := -lsocket -lnsl -h $(LNK)
-Linux_LDFLAGS    := -ldl -Wl,-soname,$(LNK)
-Darwin_LDFLAGS   := -ldl -Wl,-dylib_install_name,$(LNK)
+SunOS_LDFLAGS    := -lsocket -lnsl
+Linux_LDFLAGS    :=
+Darwin_LDFLAGS   :=
+SunOS_LIBFLAGS   := -h $(LNK)
+Linux_LIBFLAGS   := -ldl -Wl,-soname,$(LNK)
+Darwin_LIBFLAGS  := -ldl -Wl,-dylib_install_name,$(LNK)
 
 CC      += -pthread
 CFLAGS  += -Wall -fPIC ${${os}_CFLAGS} ${${bits}_CFLAGS}
@@ -32,7 +35,7 @@ clean:
 	rm -f $(OBJ) $(TGT) $(LNK) $(TST)
 
 $(TGT): $(OBJ)
-	$(CC) -shared -o $(TGT) $(OBJ) $(LDFLAGS)
+	$(CC) -shared -o $(TGT) $(OBJ) $(LDFLAGS) ${${os}_LIBFLAGS}
 	rm -f $(LNK)
 	ln -s $(TGT) $(LNK)
 
