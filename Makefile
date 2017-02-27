@@ -49,3 +49,7 @@ install: $(TGT)
 	mkdir -p $(DESTLIB)
 	install -m755 $(TGT) $(DESTLIB)
 	(cd $(DESTLIB) && rm -f $(LNK) && ln -s $(TGT) $(LNK))
+
+.PHONY: test
+test: $(TGT) $(TST)
+	./testsuite

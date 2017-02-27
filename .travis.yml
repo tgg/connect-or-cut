@@ -5,4 +5,4 @@ compiler:
 os:
   - linux
   - osx
-script: make os=$(uname -s)
+script: make test os=$(uname -s)
