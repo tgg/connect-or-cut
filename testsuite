@@ -50,9 +50,9 @@ BLOCK() {
     _footer
 }
 
-BAD() {
-    _header reject $*
-    _run $*
+EXIT_ON() {
+    _header "exit on" $*
+    _run $* 2>&1 >/dev/null | grep ERROR >/dev/null
     _footer
 }
 
@@ -75,6 +75,7 @@ BLOCK host 127.0.0.1 port 50 with args -b \'*\'
 ALLOW host localhost port 50 with args -a localhost -b \'*\'
 BLOCK host localhost port 50 with args -a localhost:49 -b \'*\'
 ALLOW host www.google.com port 80 with args -d -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
+EXIT_ON host www.google.com port 80 with args -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
 
 if test $ecount -gt 0; then
     _die "$ecount test(s) failed!"
