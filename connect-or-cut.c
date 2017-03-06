@@ -1090,7 +1090,8 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 		pthread_testcancel ();
 		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%d\n", where,
 			 ntohs (port));
-		return EACCES;
+		errno = EACCES;
+		return -1;
 	      }
 	  }
       }
