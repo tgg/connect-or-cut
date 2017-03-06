@@ -310,7 +310,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
       /* `[' allowed only at beginning of address for IPv6. */
       else if (c == '[')
 	{
-	  if (p == str)		/* RFC 3986 */
+	  if (p == str)
 	    {
 	      type = COC_IPV6_ADDR;
 	      sb = IPV6_SB_OPEN;
@@ -359,12 +359,16 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		{
 		  break;
 		}
+	      else
+		{
+		  service = NULL;
+		}
 	    }
 
 	  else
 	    {
 	      /* If so far IPv4 was still a valid choice, then it is it now. */
-	      if ((type & COC_IPV4_ADDR) == COC_IPV4_ADDR)
+	      if (p != str && ((type & COC_IPV4_ADDR) == COC_IPV4_ADDR))
 		{
 		  type = COC_IPV4_ADDR;
 
@@ -583,8 +587,8 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
   host = strndup (str, service ? service - str - skip_last : len);
 
   coc_log (COC_DEBUG_LOG_LEVEL,
-	   "DEBUG %s rule for connection to %s:%hu -- %s\n",
-	   rule_type_name[rule_type], host, port, address_type_name[type]);
+	   "DEBUG Adding %s rule for %s connection to %s:%hu\n",
+	   rule_type_name[rule_type], address_type_name[type], host, port);
 
   switch (type)
     {
@@ -1066,6 +1070,12 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	  {
 	    where = str;
 	  }
+
+	coc_log (COC_DEBUG_LOG_LEVEL,
+		 "DEBUG Checking %s rule for %s connection to %s:%hu\n",
+		 rule_type_name[e->rule_type],
+		 address_type_name[e->addr_type],
+		 where, e->port);
 
 	if (coc_rule_match(e, addr, hbuf))
 	  {

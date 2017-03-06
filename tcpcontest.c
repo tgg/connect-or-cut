@@ -125,7 +125,6 @@ main (int argc, char *argv[])
 	{
 	  printf ("connect to %s is OK?: return code is %d\n", str, rc);
 	  close (s);
-	  break;
 	}
     }
 
