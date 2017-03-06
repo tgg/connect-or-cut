@@ -131,6 +131,7 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
  * Version 1.0.2
    * Linking fixes for macOS (untested)
    * Compilation fixes for Solaris; tested on Solaris 10 with Sun CC
+   * Implement IPv6 filtering
    * Bug fixed:
      * Crash before initialization when SELinux is enabled
      * Crash when log file could not be created
@@ -147,7 +148,6 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 
  * WARN if localhost is not allowed
  * Port on Windows
- * Complete IPv6
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
    * else check against BLOCK list and BLOCK connection if it's in it;

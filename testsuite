@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Small testsuite to make sure parsing works and rules are applied
+#
+
+ecount=0
+
+_warn() {
+    cat >&2 <<EOF
+testsuite: $*
+EOF
+}
+
+_die() {
+    _warn $*
+    exit 1
+}
+
+_run() {
+    shift
+    host=$1
+    shift 2
+    port=$1
+    shift 3
+    "$WD/coc" -t stderr $1 $2 $3 $4 $5 $6 $7 $8 $9 -- "$WD/tcpcontest" "$host" "$port"
+}
+
+_header() {
+    echo -n "Checking if we" $* "... "
+}
+
+_footer() {
+    if test $? -eq 0; then
+	echo "OK"
+    else
+	echo "KO"
+	ecount=`expr $ecount + 1`
+    fi
+}
+
+ALLOW() {
+    _header ALLOW $*
+    _run $* -l allow 2>&1 >/dev/null | grep ALLOW >/dev/null
+    _footer
+}
+
+BLOCK() {
+    _header BLOCK $*
+    _run $* 2>&1 >/dev/null | grep BLOCK >/dev/null
+    _footer
+}
+
+EXIT_ON() {
+    _header "exit on" $*
+    _run $* 2>&1 >/dev/null | grep ERROR >/dev/null
+    _footer
+}
+
+
+WD="`dirname $0`"
+
+if ! test -f "$WD/tcpcontest"; then
+    _die "Missing tcpcontest helper program!"
+fi
+
+ALLOW host ::1 port 50 with args -a ::1 -b \'*\'
+ALLOW host ::1 port 50 with args -a [::1]:50 -b \'*\'
+BLOCK host ::1 port 50 with args -a [::1]:49 -b \'*\'
+ALLOW host a::f port 50 with args -a a::f -b \'*\'
+BLOCK host a::f port 50 with args -b [a::f]:50
+ALLOW host 127.0.0.1 port 50 with args -a 127.0.0.1:50 -b \'*\'
+ALLOW host 127.0.0.1 port 50 with args -a 127.0.0.1 -b \'*\'
+BLOCK host 127.0.0.1 port 50 with args -a 127.0.0.1:49 -b \'*\'
+ALLOW host 127.0.0.1 port 50 with args
+ALLOW host 127.0.0.1 port 50 with args -a \'*\'
+BLOCK host 127.0.0.1 port 50 with args -b \'*\'
+ALLOW host localhost port 50 with args -a localhost -b \'*\'
+BLOCK host localhost port 50 with args -a localhost:49 -b \'*\'
+ALLOW host www.google.com port 80 with args -d -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
+EXIT_ON host www.google.com port 80 with args -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
+
+if test $ecount -gt 0; then
+    _die "$ecount test(s) failed!"
+else
+    echo "All tests passed!"
+fi
