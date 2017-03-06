@@ -6,3 +6,6 @@ os:
   - linux
   - osx
 script: make test os=$(uname -s)
+addons:
+  hosts:
+  - localhost
