@@ -113,17 +113,17 @@ main (int argc, char *argv[])
       if (rc == 0)
 	{
 	  close (s);
-	  printf ("connect to %s OK\n", str);
+	  printf ("connect to %s is OK\n", str);
 	  break;
 	}
       else if (rc == -1)
 	{
-	  printf ("connect to %s KO: errno is %d (%s)\n", str, errno, strerror(errno));
+	  printf ("connect to %s is KO: errno is %d (%s)\n", str, errno, strerror(errno));
 	  close (s);
 	}
       else
 	{
-	  printf ("connect OK?: return code is %d\n", rc);
+	  printf ("connect to %s is OK?: return code is %d\n", str, rc);
 	  close (s);
 	  break;
 	}

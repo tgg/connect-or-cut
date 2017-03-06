@@ -63,7 +63,7 @@ if ! test -f "$WD/tcpcontest"; then
     _die "Missing tcpcontest helper program!"
 fi
 
-ALLOW host ::1 port 50 with args -a ::1 -n \'*\'
+ALLOW host ::1 port 50 with args -a ::1 -b \'*\'
 ALLOW host ::1 port 50 with args -a [::1]:50 -b \'*\'
 BLOCK host ::1 port 50 with args -a [::1]:49 -b \'*\'
 ALLOW host 127.0.0.1 port 50 with args -a 127.0.0.1:50 -b \'*\'
