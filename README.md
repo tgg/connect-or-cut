@@ -132,9 +132,11 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    * Linking fixes for macOS (untested)
    * Compilation fixes for Solaris; tested on Solaris 10 with Sun CC
    * Implement IPv6 filtering
+   * Add a testsuite
    * Bug fixed:
      * Crash before initialization when SELinux is enabled
      * Crash when log file could not be created
+     * Wrong connect() return value when blocking calls
 
  * Version 1.0.1 (2016-11-01)
    * Add some consistency checks
