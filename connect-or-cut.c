@@ -285,9 +285,10 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
     IPV6_SB_OPEN,
     IPV6_SB_CLOSE
   } sb = IPV6_SB_NONE;
-  size_t double_dot_count = 0;
+  size_t colon_count = 0;
   size_t ipv4_segment = 1;
   uint16_t segment = 0;		/* IPv4 or IPv6 */
+  bool double_colon_seen = false;
 
   while (p < str + len)
     {
@@ -337,11 +338,23 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	{
 	  /* IPv6 uses `:' as a segment separator. So we count them.
 	   * TODO validation for IPv6 is missing. */
-	  double_dot_count++;
+	  colon_count++;
 	  /* Assume `:' precedes port. We will check if not empty later. */
 	  service = p + 1;
 
-	  if (double_dot_count > 1)
+	  if (*service == ':')
+	    {
+	      if (!double_colon_seen)
+		{
+		  double_colon_seen = true;
+		}
+	      else
+		{
+		  DIE ("extra `:' unexpected, aborting\n");
+		}
+	    }
+
+	  if (colon_count > 1)
 	    {
 	      if ((type & COC_IPV6_ADDR) == COC_IPV6_ADDR)
 		{
@@ -349,13 +362,13 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		}
 
 	      if (type != COC_IPV6_ADDR ||
-		  ((sb == IPV6_SB_OPEN && double_dot_count > 7) ||
-		   double_dot_count > 8))
+		  ((sb == IPV6_SB_OPEN && colon_count > 7) ||
+		   colon_count > 8))
 		{
 		  DIE ("extra `:' unexpected, aborting\n");
 		}
 
-	      if (double_dot_count == 8 || sb == IPV6_SB_CLOSE)
+	      if (colon_count == 8 || sb == IPV6_SB_CLOSE)
 		{
 		  break;
 		}
@@ -417,7 +430,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	      if ((segment > UINT16_MAX / 10) ||
 		  (UINT16_MAX - (c - '0') < segment * 10))
 		{
-		  DIE ("invalid IPV4 segment, aborting\n");
+		  DIE ("invalid IPv4 segment, aborting\n");
 		}
 	      else
 		{
