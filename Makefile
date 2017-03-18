@@ -17,10 +17,11 @@ OPTION_STEALTH_1 := -DCOC_STEALTH
 32_LDFLAGS       := -m32
 SunOS_LDFLAGS    := -lsocket -lnsl
 SunOS_LIBFLAGS   := -h $(LNK)
-Linux_LIBFLAGS   := -shared -ldl -Wl,-soname,$(LNK)
-FreeBSD_LIBFLAGS := $(Linux_LIBFLAGS)
-NetBSD_LIBFLAGS  := $(Linux_LIBFLAGS)
-OpenBSD_LIBFLAGS := $(Linux_LIBFLAGS)
+GCC_LIBFLAGS     := -shared -Wl,-soname,$(LNK)
+Linux_LIBFLAGS   := -ldl $(GCC_LIBFLAGS)
+FreeBSD_LIBFLAGS := $(GCC_LIBFLAGS)
+NetBSD_LIBFLAGS  := $(GCC_LIBFLAGS)
+OpenBSD_LIBFLAGS := $(GCC_LIBFLAGS)
 Darwin_LIBFLAGS  := -dynamiclib -flat_namespace -ldl -Wl,-dylib_install_name,$(LNK)
 Darwin_CFLAGS    := -fno-common
 

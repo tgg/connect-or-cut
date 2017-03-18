@@ -552,8 +552,8 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
       if (getservbyname_needed)
 	{
-	  char *svc = strndup (service, len - (service - str));	/* TODO issue here for IPv6 []:svc */
-	  struct servent *svt = getservbyname (service, "tcp");
+	  char *svc = strndup (service, len - (service - str));
+	  struct servent *svt = getservbyname (svc, "tcp");
 
 	  if (svt != NULL)
 	    {
@@ -1086,7 +1086,7 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 		 "DEBUG Checking %s rule for %s connection to %s:%hu\n",
 		 rule_type_name[e->rule_type],
 		 address_type_name[e->addr_type],
-		 where, e->port);
+		 where, ntohs (e->port));
 
 	if (coc_rule_match(e, addr, hbuf))
 	  {

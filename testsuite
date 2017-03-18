@@ -66,6 +66,7 @@ fi
 ALLOW host ::1 port 50 with args -a ::1 -b \'*\'
 ALLOW host ::1 port 50 with args -a [::1]:50 -b \'*\'
 BLOCK host ::1 port 50 with args -a [::1]:49 -b \'*\'
+ALLOW host ::1 port 80 with args -a [::1]:http -b \'*\'
 ALLOW host a::f port 50 with args -a a::f -b \'*\'
 BLOCK host a::f port 50 with args -b [a::f]:50
 ALLOW host 2001:db8:0:1:1:1:1:1 port 50 with args -a 2001:db8:0:1:1:1:1:1 -b \'*\'
