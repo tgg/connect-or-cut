@@ -382,7 +382,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
       /* We can see dots for IPv4, glob, or hostnames.  We can rule
        * out IPv4 when we have a segment that does not fit what is
-       * expected (e.g. higher than 255). TODO leading zero.
+       * expected (e.g. higher than 255).
        */
       else if (c == '.')
 	{
@@ -649,13 +649,14 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	struct addrinfo *ailist, *aip;
 	struct addrinfo hints;
 	int err;
+	memset (&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_NUMERICSERV;
 #ifdef AI_ADDRCONFIG
 	hints.ai_flags |= AI_ADDRCONFIG;
 #endif
 	hints.ai_family = AF_UNSPEC;	/* IPv4 or IPv6 or others */
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = 6;	/* TCP */
+	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_addrlen = 0;
 	hints.ai_canonname = NULL;
 	hints.ai_addr = NULL;
