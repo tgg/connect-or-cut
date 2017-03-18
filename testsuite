@@ -78,6 +78,7 @@ BLOCK host 127.0.0.1 port 50 with args -b \'*\'
 ALLOW host localhost port 50 with args -a localhost -b \'*\'
 BLOCK host localhost port 50 with args -a localhost:49 -b \'*\'
 ALLOW host www.google.com port 80 with args -d -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
+ALLOW host lwn.net port 80 with args -a lwn.net:80 -b \'*\'
 ABORT_ON host www.google.com port 80 with args -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
 ABORT_ON host ::1 port 80 with args -a ab::g
 ABORT_ON host ::1 port 80 with args -a :::1
