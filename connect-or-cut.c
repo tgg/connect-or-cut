@@ -288,7 +288,6 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
   size_t colon_count = 0;
   size_t ipv4_segment = 1;
   uint16_t segment = 0;		/* IPv4 or IPv6 */
-  bool double_colon_seen = false;
 
   while (p < str + len)
     {
@@ -337,22 +336,10 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
       else if (c == ':')
 	{
 	  /* IPv6 uses `:' as a segment separator. So we count them.
-	   * TODO validation for IPv6 is missing. */
+	   * Validation for IPv6 is done later with inet_pton. */
 	  colon_count++;
 	  /* Assume `:' precedes port. We will check if not empty later. */
 	  service = p + 1;
-
-	  if (*service == ':')
-	    {
-	      if (!double_colon_seen)
-		{
-		  double_colon_seen = true;
-		}
-	      else
-		{
-		  DIE ("extra `:' unexpected, aborting\n");
-		}
-	    }
 
 	  if (colon_count > 1)
 	    {
@@ -611,7 +598,12 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	e->rule_type = rule_type;
 	e->addr_type = COC_IPV6_ADDR;
 	e->port = htons (port);
-	inet_pton (AF_INET6, host, &e->addr.ipv6); /* TODO rc */
+
+	if (inet_pton (AF_INET6, host, &e->addr.ipv6) != 1)
+	  {
+	    DIE ("Invalid IPv6 address: `%s', aborting\n", host);
+	  }
+
 	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	free (host);
 	break;
@@ -623,7 +615,12 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	e->rule_type = rule_type;
 	e->addr_type = COC_IPV4_ADDR;
 	e->port = htons (port);
-	inet_pton (AF_INET, host, &e->addr.ipv4);
+
+	if (inet_pton (AF_INET, host, &e->addr.ipv4) != 1)
+	  {
+	    DIE ("Invalid IPv4 address: `%s', aborting\n", host);
+	  }
+
 	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	free (host);
 	break;
