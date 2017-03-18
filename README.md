@@ -129,7 +129,7 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 ## News
 
  * Version 1.0.2
-   * Linking fixes for macOS (untested)
+   * Linking fixes for macOS
    * Compilation fixes for Solaris; tested on Solaris 10 with Sun CC
    * Implement IPv6 filtering
    * Add a testsuite
