@@ -1092,14 +1092,14 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	  {
 	    if (e->rule_type == COC_ALLOW)
 	      {
-		coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n", where,
+		coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%hu\n", where,
 			 ntohs (port));
 		return real_connect (fd, addr, addrlen);
 	      }
 	    else
 	      {
 		pthread_testcancel ();
-		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%d\n", where,
+		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%hu\n", where,
 			 ntohs (port));
 		errno = EACCES;
 		return -1;
@@ -1107,7 +1107,7 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	  }
       }
 
-      coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%d\n", str,
+      coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%hu\n", str,
 	       ntohs (port));
     }
 
