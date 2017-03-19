@@ -1063,7 +1063,12 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	  {
 	    if (!dns_lookup_done)
 	      {
-		int rc = getnameinfo (addr, addrlen, hbuf, sizeof (hbuf), NULL, 0,
+		int rc = getnameinfo (addr, addrlen, hbuf, sizeof (hbuf),
+#ifdef __APPLE__
+                                      "00", 2,
+#else
+                                      NULL, 0,
+#endif
 				      NI_NUMERICSERV);
 
 		if (rc)
