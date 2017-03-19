@@ -221,6 +221,7 @@ coc_log (coc_log_level_t level, const char *format, ...)
 	  va_start (ap, format);
 	  fprintf (stderr, "%s", buffer);
 	  vfprintf (stderr, format, ap);
+	  fflush (stderr);
 	  va_end (ap);
 	}
 
