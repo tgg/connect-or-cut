@@ -1058,8 +1058,6 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
       coc_entry_t *e;
       SLIST_FOREACH (e, &coc_list_head, entries)
       {
-	char *where = NULL;
-
 	if (e->addr_type == COC_GLOB_ADDR)
 	  {
 	    if (!dns_lookup_done)
@@ -1073,33 +1071,31 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 			     gai_strerror (rc));
 		    continue;
 		  }
+                else
+                  {
+                    dns_lookup_done = true;
+                  }
 	      }
-
-	    where = hbuf;
-	  }
-	else
-	  {
-	    where = str;
 	  }
 
 	coc_log (COC_DEBUG_LOG_LEVEL,
 		 "DEBUG Checking %s rule for %s connection to %s:%hu\n",
 		 rule_type_name[e->rule_type],
 		 address_type_name[e->addr_type],
-		 where, ntohs (e->port));
+		 str, ntohs (e->port));
 
 	if (coc_rule_match(e, addr, hbuf))
 	  {
 	    if (e->rule_type == COC_ALLOW)
 	      {
-		coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%hu\n", where,
+		coc_log (COC_ALLOW_LOG_LEVEL, "ALLOW connection to %s:%hu\n", str,
 			 ntohs (port));
 		return real_connect (fd, addr, addrlen);
 	      }
 	    else
 	      {
 		pthread_testcancel ();
-		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%hu\n", where,
+		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%hu\n", str,
 			 ntohs (port));
 		errno = EACCES;
 		return -1;
