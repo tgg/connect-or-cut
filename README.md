@@ -106,11 +106,11 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
  * connect-or-cut does not work for programs:
    * performing connect syscall directly;
    * statically linked (e.g. Go binaries)
- * Only outgoing connection using TCP over IPv4 work for now.
+ * Only outgoing connection using TCP over IPv4 or IPv6 work for now.
  * Tested on:
    * Debian GNU/Linux with gcc and clang
    * OmniOS r151014 with gcc (so it should work on Solaris)
-   * FreeBSD 10.2 with clang
+   * FreeBSD 11.0-STABLE with clang
    * NetBSD 7 with gcc
    * OpenBSD 5.8 with gcc
 
