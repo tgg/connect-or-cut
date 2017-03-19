@@ -13,9 +13,9 @@ DESTLIB ?= $(DESTDIR)/lib
 
 OPTION_STEALTH_1 := -DCOC_STEALTH
 
-32_CFLAGS        := -m32
-32_LDFLAGS       := -m32
-SunOS_LDFLAGS    := -lsocket -lnsl
+32__CFLAGS       := -m32
+32__LDFLAGS      := -m32
+SunOS__LDFLAGS   := -lsocket -lnsl
 SunOS_LIBFLAGS   := -h $(LNK)
 GCC_LIBFLAGS     := -shared -Wl,-soname,$(LNK)
 Linux_LIBFLAGS   := -ldl $(GCC_LIBFLAGS)
@@ -29,7 +29,7 @@ Darwin_CFLAGS    := -fno-common
 CC      += -pthread
 CFLAGS  += -Wall -fPIC ${${os}_CFLAGS} ${${bits}_CFLAGS}
 CPPFLAGS+= ${OPTION_STEALTH_${stealth}} ${${os}_CPPFLAGS}
-LDFLAGS += ${${os}_LDFLAGS} ${${bits}_LDFLAGS}
+LDFLAGS += ${${os}__LDFLAGS} ${${bits}__LDFLAGS}
 
 .PHONY: all
 all: $(TGT) $(TST)
