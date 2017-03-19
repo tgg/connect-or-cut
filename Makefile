@@ -22,6 +22,7 @@ Linux_LIBFLAGS   := -ldl $(GCC_LIBFLAGS)
 FreeBSD_LIBFLAGS := $(GCC_LIBFLAGS)
 NetBSD_LIBFLAGS  := $(GCC_LIBFLAGS)
 OpenBSD_LIBFLAGS := $(GCC_LIBFLAGS)
+DragonFly_LIBFLAGS := $(GCC_LIBFLAGS)
 Darwin_LIBFLAGS  := -dynamiclib -flat_namespace -ldl -Wl,-dylib_install_name,$(LNK)
 Darwin_CFLAGS    := -fno-common
 
