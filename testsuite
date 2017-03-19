@@ -26,7 +26,7 @@ _run() {
 }
 
 _header() {
-    echo -n "Checking if we" $* "... "
+    /bin/echo -n "Checking if we" $* "... "
 }
 
 _footer() {
