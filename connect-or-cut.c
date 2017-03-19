@@ -330,7 +330,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    }
 	  else
 	    {
-	      DIE ("unexpected `]', aborting\n");
+	      DIE ("`]' unexpected, aborting\n");
 	    }
 	}
 
@@ -353,7 +353,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		  ((sb == IPV6_SB_OPEN && colon_count > 7) ||
 		   colon_count > 8))
 		{
-		  DIE ("extra `:' unexpected, aborting\n");
+		  DIE ("Extra `:' unexpected, aborting\n");
 		}
 
 	      if (colon_count == 8 || sb == IPV6_SB_CLOSE)
@@ -401,7 +401,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	    {
 	      if (type == COC_IPV4_ADDR)	/* not possible for now. */
 		{
-		  DIE ("extra `.' unexpected, aborting\n");
+		  DIE ("Extra `.' unexpected, aborting\n");
 		}
 	      else
 		{
@@ -418,7 +418,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	      if ((segment > UINT16_MAX / 10) ||
 		  (UINT16_MAX - (c - '0') < segment * 10))
 		{
-		  DIE ("invalid IPv4 segment, aborting\n");
+		  DIE ("Invalid IPv4 segment, aborting\n");
 		}
 	      else
 		{
@@ -429,7 +429,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		{
 		  if (type == COC_IPV4_ADDR)	/* not possible */
 		    {
-		      DIE ("invalid IPv4 address, aborting\n");
+		      DIE ("Invalid IPv4 address, aborting\n");
 		    }
 		  else
 		    {
@@ -446,7 +446,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	{
 	  if (type == COC_IPV4_ADDR)	/* not possible */
 	    {
-	      DIE ("invalid IPv4 address, aborting\n");
+	      DIE ("Invalid IPv4 address, aborting\n");
 	    }
 	  else
 	    {
@@ -501,7 +501,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
   if (type == COC_IPV6_ADDR && sb == IPV6_SB_OPEN)
     {
-      DIE ("missing `]', aborting\n");
+      DIE ("`]' missing, aborting\n");
     }
 
   assert (type == COC_IPV4_ADDR ||
@@ -517,7 +517,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
       if (t == str + len)
 	{
-	  DIE ("no port specified after `:', aborting\n");
+	  DIE ("No port specified after `:', aborting\n");
 	}
 
       while (t < str + len)
@@ -530,7 +530,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	      if ((port > UINT16_MAX / 10) ||
 		  (UINT16_MAX - (u - '0') < port * 10))
 		{
-		  DIE ("invalid port number, aborting\n");
+		  DIE ("Invalid port number, aborting\n");
 		}
 	      else
 		{
