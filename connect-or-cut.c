@@ -64,6 +64,10 @@
 #endif
 #endif
 
+#ifdef __SunOS_5_11
+#undef MISSING_STRNDUP
+#endif
+
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #include <sys/param.h>
 #if defined(BSD)
