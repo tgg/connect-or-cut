@@ -109,10 +109,10 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
  * Only outgoing connection using TCP over IPv4 or IPv6 work for now.
  * Tested on:
    * Debian GNU/Linux with gcc and clang
-   * OmniOS r151014 with gcc (so it should work on Solaris)
    * FreeBSD 11.0-STABLE with clang
    * NetBSD 7 with gcc
-   * OpenBSD 5.8 with gcc
+   * Solaris 10
+   * macOS 10.4
 
    Portability patches welcome!
 
@@ -128,12 +128,11 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 
 ## News
 
- * Version 1.0.2
-   * Linking fixes for macOS
-   * Compilation fixes for Solaris; tested on Solaris 10 with Sun CC
+ * Version 1.0.2 (2017-03-21)
    * Implement IPv6 filtering
+   * Fixes for macOS and Solaris
    * Add a testsuite
-   * Bug fixed:
+   * Bugs fixed:
      * Crash before initialization when SELinux is enabled
      * Crash when log file could not be created
      * Wrong connect() return value when blocking calls
