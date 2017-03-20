@@ -150,6 +150,19 @@ _append_preload() {
     export $preload
 }
 
+# Solaris /bin/sh does not understand bitwise operations
+# so we rely on tcsh there
+_bitwise_or() {
+    case `uname -s` in
+	SunOS)
+	    echo "@ a = $1; @ b = $2; @x = (\$a | \$b); echo $x" | tcsh -s
+	    ;;
+	*)
+	    echo "$(($1|$2))"
+	    ;;
+    esac
+}
+
 _append_log_target() {
     _ensure_arg "$1" "$2"
     OIFS=$IFS
@@ -157,13 +170,13 @@ _append_log_target() {
     for target in $2; do
 	case $target in
 	    stderr)
-		COC_LOG_TARGET=`echo "$((${COC_LOG_TARGET}|1))"`
+		COC_LOG_TARGET=`_bitwise_or ${COC_LOG_TARGET} 1`
 		;;
 	    syslog)
-		COC_LOG_TARGET=`echo "$((${COC_LOG_TARGET}|2))"`
+		COC_LOG_TARGET=`_bitwise_or ${COC_LOG_TARGET} 2`
 		;;
 	    file)
-		COC_LOG_TARGET=`echo "$((${COC_LOG_TARGET}|4))"`
+		COC_LOG_TARGET=`_bitwise_or ${COC_LOG_TARGET} 4`
 		;;
 	    *)
 		_die "unknown log target \`$target'!"
