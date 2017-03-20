@@ -16,6 +16,20 @@ _die() {
     exit 1
 }
 
+_echo() {
+    case `uname -s` in
+	SunOS)
+	    /usr/ucb/echo $*
+	    ;;
+	Darwin)
+	    /bin/echo $*
+	    ;;
+	*)
+	    echo $*
+	    ;;
+    esac
+}
+
 _run() {
     shift
     host=$1
@@ -26,14 +40,14 @@ _run() {
 }
 
 _header() {
-    /bin/echo -n "Checking if we" $* "... "
+    _echo -n "Checking if we" $* "... "
 }
 
 _footer() {
     if test $? -eq 0; then
-	echo "OK"
+	_echo "OK"
     else
-	echo "KO"
+	_echo "KO"
 	ecount=`expr $ecount + 1`
     fi
 }
@@ -59,9 +73,7 @@ ABORT_ON() {
 
 WD="`dirname $0`"
 
-if ! test -f "$WD/tcpcontest"; then
-    _die "Missing tcpcontest helper program!"
-fi
+test -f "$WD/tcpcontest" || _die "Missing tcpcontest helper program!"
 
 ALLOW host ::1 port 50 with args -a ::1 -b \'*\'
 ALLOW host ::1 port 50 with args -a [::1]:50 -b \'*\'
