@@ -651,17 +651,12 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	struct addrinfo hints;
 	int err;
 	memset (&hints, 0, sizeof(struct addrinfo));
-	hints.ai_flags = AI_NUMERICSERV;
 #ifdef AI_ADDRCONFIG
 	hints.ai_flags |= AI_ADDRCONFIG;
 #endif
 	hints.ai_family = AF_UNSPEC;	/* IPv4 or IPv6 or others */
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_addrlen = 0;
-	hints.ai_canonname = NULL;
-	hints.ai_addr = NULL;
-	hints.ai_next = NULL;
 
 	if ((err = getaddrinfo (host, NULL, &hints, &ailist)) != 0)
 	  {
@@ -1064,12 +1059,7 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
 	    if (!dns_lookup_done)
 	      {
 		int rc = getnameinfo (addr, addrlen, hbuf, sizeof (hbuf),
-#ifdef __APPLE__
-                                      "00", 2,
-#else
-                                      NULL, 0,
-#endif
-				      NI_NUMERICSERV);
+                                      NULL, 0, NI_NUMERICSERV);
 
 		if (rc)
 		  {
