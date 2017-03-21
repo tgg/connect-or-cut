@@ -13,7 +13,7 @@ DESTLIB ?= $(DESTDIR)/lib
 
 OPTION_STEALTH_1 := -DCOC_STEALTH
 
-32__CFLAGS        := -m32
+32_CFLAGS         := -m32
 32__LDFLAGS       := -m32
 SunOS__LDFLAGS    := -lsocket -lnsl
 SunOS_CPPFLAGS    := -DMISSING_STRNDUP
@@ -43,7 +43,7 @@ all: $(TGT) $(TST)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJ) $(TGT) $(LNK) $(TST)
+	rm -f $(OBJ) $(TGT) $(LNK) $(TST) $(TST).o
 
 $(TGT): $(OBJ)
 	$(CC) -o $(TGT) $(OBJ) $(LDFLAGS) ${${os}_LIBFLAGS}
