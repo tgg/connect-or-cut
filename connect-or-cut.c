@@ -61,9 +61,11 @@
 #include <WinSock2.h>
 #include <Ws2tcpip.h>
 #include <Shlwapi.h>
+#include <iphlpapi.h>
 #include "sys_queue.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "shlwapi.lib")
+#pragma comment(lib, "IPHLPAPI.lib")
 #endif
 
 #include <assert.h>
@@ -805,8 +807,6 @@ coc_long_value (const char *name, const char *value, long lower_bound,
 static int (*real_connect) (int fd, const struct sockaddr * addr,
 			    socklen_t addrlen);
 
-#define NS "nameserver "
-
 typedef struct coc_resolver {
   union {
     struct in_addr ipv4;
@@ -818,6 +818,11 @@ typedef struct coc_resolver {
 static void
 coc_read_resolv (coc_resolver_t * out, size_t * index)
 {
+	*index = 0;
+
+#ifndef _WIN32
+#define NS "nameserver "
+
   char buffer[1024];
   FILE *resolv = fopen ("/etc/resolv.conf", "r");
 
@@ -826,38 +831,130 @@ coc_read_resolv (coc_resolver_t * out, size_t * index)
       DIE ("Could not read /etc/resolv.conf, aborting\n");
     }
 
-  *index = 0;
+  while (fgets(buffer, sizeof(buffer), resolv) && *index < MAXNS)
+  {
+	  if (!strncmp(buffer, NS, sizeof(NS) - 1))
+	  {
+		  char *ns = buffer + sizeof(NS) - 1;
+		  size_t len = strlen(ns);
 
-  while (fgets (buffer, sizeof (buffer), resolv) && *index < MAXNS)
-    {
-      if (!strncmp (buffer, NS, sizeof (NS) - 1))
-	{
-	  char *ns = buffer + sizeof (NS) - 1;
-	  size_t len = strlen (ns);
+		  if (ns[len - 1] == '\n')
+		  {
+			  ns[len - 1] = '\0';
+		  }
 
-	  if (ns[len - 1] == '\n')
-	    {
-	      ns[len - 1] = '\0';
-	    }
+		  coc_log(COC_DEBUG_LOG_LEVEL, "DEBUG Found nameserver: %s\n", ns);
 
-	  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG Found nameserver: %s\n", ns);
+		  if (inet_pton(AF_INET, ns, &out[*index].addr.ipv4) == 1)
+		  {
+			  out[(*index)++].isv6 = false;
+		  }
+		  else if (inet_pton(AF_INET6, ns, &out[*index].addr.ipv6) == 1)
+		  {
+			  out[(*index)++].isv6 = true;
+		  }
+		  else
+		  {
+			  DIE("Cannot process nameserver: `%s'\n", ns);
+		  }
+	  }
+  }
 
-	  if (inet_pton (AF_INET, ns, &out[*index].addr.ipv4) == 1)
-	    {
-	      out[(*index)++].isv6 = false;
-	    }
-	  else if (inet_pton (AF_INET6, ns, &out[*index].addr.ipv6) == 1)
-	    {
-	      out[(*index)++].isv6 = true;
-	    }
-	  else
-	    {
-	      DIE ("Cannot process nameserver: `%s'\n", ns);
-	    }
+  fclose(resolv);
+
+#else
+	/* We rely on GetAdaptersAddresses:
+	 *   https://msdn.microsoft.com/en-us/library/windows/desktop/aa365915(v=vs.85).aspx
+	 * to retrieve IPv4 and IPv6 DNS server addresses.
+	 */
+	DWORD dwRetVal = 0;
+
+	// Set the flags to pass to GetAdaptersAddresses
+	ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_UNICAST;
+
+	LPVOID lpMsgBuf = NULL;
+
+	PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+	ULONG outBufLen = 0;
+	ULONG iterations = 0;
+
+	PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+	IP_ADAPTER_DNS_SERVER_ADDRESS *pDnServer = NULL;
+
+#define WORKING_BUFFER_SIZE 15000
+#define MAX_TRIES 3
+
+	// Allocate a 15 KB buffer to start with.
+	outBufLen = WORKING_BUFFER_SIZE;
+
+	do {
+		pAddresses = (IP_ADAPTER_ADDRESSES *) malloc (outBufLen);
+		if (pAddresses == NULL)
+		{
+			DIE ("Cannot allocate memory for IP_ADAPTER_ADDRESSES, aborting\n");
+		}
+
+		dwRetVal = GetAdaptersAddresses (AF_UNSPEC, flags, NULL, pAddresses, &outBufLen);
+
+		if (dwRetVal == ERROR_BUFFER_OVERFLOW)
+		{
+			free (pAddresses);
+			pAddresses = NULL;
+		}
+		else
+		{
+			break;
+		}
+
+		iterations++;
+
+	} while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (iterations < MAX_TRIES));
+
+	if (dwRetVal == NO_ERROR) {
+		// If successful, output some information from the data we received
+		pCurrAddresses = pAddresses;
+
+		while (pCurrAddresses) {
+			pDnServer = pCurrAddresses->FirstDnsServerAddress;
+
+			while (pDnServer && *index < MAXNS) {
+				ADDRESS_FAMILY family = pDnServer->Address.lpSockaddr->sa_family;
+
+				if (family == AF_INET6)
+				{
+					out[*index].addr.ipv6 = ((struct sockaddr_in6 *) pDnServer->Address.lpSockaddr)->sin6_addr;
+					out[*index].isv6 = true;
+				}
+				else if (family == AF_INET)
+				{
+					out[*index].addr.ipv4 = ((struct sockaddr_in *) pDnServer->Address.lpSockaddr)->sin_addr;
+					out[*index].isv6 = false;
+				}
+
+				(*index)++;
+				pDnServer = pDnServer->Next;
+			}
+
+			pCurrAddresses = pCurrAddresses->Next;
+		}
 	}
-    }
-
-  fclose (resolv);
+	else {
+		if (dwRetVal == ERROR_NO_DATA)
+			DIE("Cannot find any DNS server, aborting\n");
+		else {
+			if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+				(LPTSTR)&lpMsgBuf, 0, NULL)) {
+				coc_log(COC_BLOCK_ERROR_LEVEL, "ERROR %s\n", lpMsgBuf);
+				LocalFree(lpMsgBuf);
+				if (pAddresses)
+					free (pAddresses);
+				exit(1);
+			}
+		}
+	}
+#endif
 }
 
 const char *
