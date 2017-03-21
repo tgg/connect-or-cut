@@ -155,7 +155,7 @@ _append_preload() {
 _bitwise_or() {
     case `uname -s` in
 	SunOS)
-	    echo "@ a = $1; @ b = $2; @x = (\$a | \$b); echo \$x" | tcsh -s
+	    echo "@ a = $1; @ b = $2; @ x = (\$a | \$b); echo \$x" | tcsh -s
 	    ;;
 	*)
 	    echo "$(($1|$2))"
