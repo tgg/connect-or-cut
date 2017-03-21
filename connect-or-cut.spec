@@ -81,5 +81,8 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Mar 21 2017 Thomas Girard <thomas.g.girard@free.fr> - 1.0.3-1
+- update to version 1.0.3
+
 * Mon Nov 01 2016 Thomas Girard <thomas.g.girard@free.fr> - 1.0.1-1
 - Initial version of the package

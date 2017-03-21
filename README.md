@@ -127,6 +127,9 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    - gethostbyaddr/gethostent, which do, are not reentrant on all platforms
 
 ## News
+ * Version 1.0.3 (2017-03-21)
+   * Fix testsuite on SunOS
+   * Fix RPM compilation in 32 bits
 
  * Version 1.0.2 (2017-03-21)
    * Implement IPv6 filtering
