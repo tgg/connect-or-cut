@@ -63,9 +63,15 @@
 #include <Shlwapi.h>
 #include <iphlpapi.h>
 #include "sys_queue.h"
+#include "MinHook.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "IPHLPAPI.lib")
+#ifdef _M_X64
+#pragma comment(lib, "libMinHook-x64-v140-mtd.lib")
+#elif defined _M_IX86
+#pragma comment(lib, "libMinHook-x86-v140-mtd.lib")
+#endif
 #endif
 
 #include <assert.h>
@@ -84,7 +90,7 @@
 #ifdef _WIN32
 typedef uint16_t in_port_t;
 #define MISSING_STRNDUP
-#define MAXNS 3
+#define MAXNS 30
 #define LOG_ERR 3
 #define LOG_WARNING 4
 #define LOG_INFO 6
@@ -948,8 +954,7 @@ coc_read_resolv (coc_resolver_t * out, size_t * index)
 				(LPTSTR)&lpMsgBuf, 0, NULL)) {
 				coc_log(COC_BLOCK_ERROR_LEVEL, "ERROR %s\n", lpMsgBuf);
 				LocalFree(lpMsgBuf);
-				if (pAddresses)
-					free (pAddresses);
+				free (pAddresses);
 				exit(1);
 			}
 		}
@@ -963,12 +968,147 @@ coc_version (void)
   return version;
 }
 
+#ifdef _WIN32
+
+#ifdef UNICODE
+#define LoadLib "LoadLibraryW"
+#else
+#define LoadLib "LoadLibraryA"
+#endif
+
+BOOL coc_inject(HANDLE hProcess)
+{
+	LPTHREAD_START_ROUTINE lpLoadLibrary = (LPTHREAD_START_ROUTINE) GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), LoadLib);
+
+	if (lpLoadLibrary == NULL)
+	{
+		return FALSE;
+	}
+
+	TCHAR szPath[MAX_PATH];
+	HMODULE self = GetModuleHandle(TEXT("connect-or-cut.dll"));
+	if (self == NULL)
+	{
+		return FALSE;
+	}
+
+	if (GetModuleFileName(self, szPath, MAX_PATH) == 0)
+	{
+		return FALSE;
+	}
+
+	int iLen = lstrlen(szPath) + 1;
+	int cbSize = iLen * sizeof(TCHAR);
+
+	LPVOID lpPath = VirtualAllocEx(hProcess, NULL, cbSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	if (lpPath == NULL)
+	{
+		return FALSE;
+	}
+
+	if (!WriteProcessMemory(hProcess, lpPath, szPath, cbSize, NULL))
+	{
+		return FALSE;
+	}
+
+	HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, lpLoadLibrary, lpPath, 0, NULL);
+	if (hThread == NULL)
+	{
+		return FALSE;
+	}
+
+	if (WaitForSingleObject(hThread, INFINITE) != WAIT_OBJECT_0)
+	{
+		return FALSE;
+	}
+
+	DWORD dwExitCode;
+	if (!GetExitCodeThread(hThread, &dwExitCode))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+int HOOK(connect(SOCKET fd, const struct sockaddr *addr, socklen_t addrlen));
+void coc_init(void);
+BOOL(WINAPI *real_CreateProcess) (LPCTSTR lpApplicationName,
+	LPTSTR lpCommandLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCTSTR lpCurrentDirectory,
+	LPSTARTUPINFO lpStartupInfo,
+	LPPROCESS_INFORMATION lpProcessInformation);
+BOOL HOOK(CreateProcess(
+	LPCTSTR lpApplicationName,
+	LPTSTR lpCommandLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCTSTR lpCurrentDirectory,
+	LPSTARTUPINFO lpStartupInfo,
+	LPPROCESS_INFORMATION lpProcessInformation))
+{
+	// Make sure to start the process in a suspended state, then inject
+	// ourselves
+	bool resume = !(((dwCreationFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED));
+	dwCreationFlags |= CREATE_SUSPENDED;
+	BOOL status = real_CreateProcess(
+		lpApplicationName, lpCommandLine,
+		lpProcessAttributes, lpThreadAttributes,
+		bInheritHandles, dwCreationFlags,
+		lpEnvironment, lpCurrentDirectory,
+		lpStartupInfo, lpProcessInformation);
+
+	if (status)
+	{
+		coc_inject(lpProcessInformation->hProcess);
+	}
+
+	if (resume)
+	{
+		ResumeThread(lpProcessInformation->hThread);
+	}
+
+	return status;
+}
+#endif
+
 static inline void
 coc_sym_connect (void)
 {
-#ifndef _WIN32
   if (real_connect == NULL)
     {
+#ifdef _WIN32
+	  if (MH_Initialize() != MH_OK)
+	  {
+		  DIE("Cannot initialize MinHook, aborting\n");
+	  }
+
+	  if (MH_CreateHookApiEx(L"ws2_32", "connect", &hook_connect, (LPVOID *) &real_connect, NULL) != MH_OK)
+	  {
+		  DIE("Cannot hook connect(), aborting\n");
+	  }
+
+	  /* TODO: add WSAConnect, ConnectEx */
+	  if (MH_CreateHook(&CreateProcess, &hook_CreateProcess, (LPVOID *) &real_CreateProcess) != MH_OK)
+	  {
+		  DIE("Cannot hook CreateProcess, aborting\n");
+	  }
+
+	  /* TODO: add CreateProcess so that the hook persists into new processes. */
+
+	  if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
+	  {
+		  DIE("Cannot enable hooks, aborting\n");
+	  }
+#else
       real_connect =
 	(int (*)(int, const struct sockaddr *, socklen_t)) dlsym (RTLD_NEXT,
 								  "connect");
@@ -984,8 +1124,8 @@ coc_sym_connect (void)
 
 	  DIE ("%s\n", error);
 	}
-    }
 #endif
+    }
 }
 
 #ifdef _WIN32
@@ -997,6 +1137,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
+		coc_init ();
+		break;
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
 	case DLL_PROCESS_DETACH:
@@ -1100,7 +1242,7 @@ coc_init (void)
 		     IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, &dns[i].addr.ipv6)))
 		  {
 		    dns_server_found = true;
-		    break;
+		    break; // TODO fix break
 		  }
 	      }
 	  }

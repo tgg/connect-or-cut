@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LocalDebuggerCommand>C:\Users\Thoma\Source\Repos\connect-or-cut\Debug\cocwin.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>C:\Windows\System32\cmd.exe C:\Users\Thoma\Source\Repos\connect-or-cut\Debug\connect-or-cut.dll</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LocalDebuggerCommand>C:\Users\Thoma\Source\Repos\connect-or-cut\Debug\cocwin.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>C:\Windows\System32\cmd.exe C:\Users\Thoma\Source\Repos\connect-or-cut\Debug\connect-or-cut.dll</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+</Project>
