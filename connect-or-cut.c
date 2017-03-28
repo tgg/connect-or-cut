@@ -952,7 +952,7 @@ coc_read_resolv (coc_resolver_t * out, size_t * index)
 				FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 				(LPTSTR)&lpMsgBuf, 0, NULL)) {
-				coc_log(COC_BLOCK_ERROR_LEVEL, "ERROR %s\n", lpMsgBuf);
+				coc_log(COC_ERROR_LOG_LEVEL, "ERROR %s\n", lpMsgBuf);
 				LocalFree(lpMsgBuf);
 				free (pAddresses);
 				exit(1);
