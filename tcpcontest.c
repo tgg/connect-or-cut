@@ -79,9 +79,6 @@ main (int argc, char *argv[])
 #ifdef _WIN32
   WSADATA wsaData;
   int err;
-#ifdef _DEBUG
-  getchar();
-#endif
 
   err = WSAStartup(MAKEWORD(2, 2), &wsaData);
 

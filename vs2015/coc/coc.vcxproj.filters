@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="coc.c">
+    <ClCompile Include="..\coc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

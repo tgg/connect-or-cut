@@ -5,9 +5,9 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "connect-or-cut", "connect-or-cut.vcxproj", "{A34F0111-3E7B-4DF0-A11A-FE16297560D7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cocwin", "cocwin\cocwin.vcxproj", "{09519461-063E-4EDA-A2DC-DBF87697C11A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coc", "vs2015\coc\coc.vcxproj", "{09519461-063E-4EDA-A2DC-DBF87697C11A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tcpcontest", "tcpcontest\tcpcontest.vcxproj", "{1FF3631D-851D-4356-BB77-68F9B0E75C37}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tcpcontest", "vs2015\tcpcontest\tcpcontest.vcxproj", "{1FF3631D-851D-4356-BB77-68F9B0E75C37}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
