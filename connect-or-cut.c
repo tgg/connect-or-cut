@@ -47,6 +47,7 @@
 #include <syslog.h>
 #define SOCKET int
 #define HOOK(fn) fn
+#define WSAAPI /* nothing */
 #else
 #define _CRT_SECURE_NO_WARNINGS
 #include <SDKDDKVer.h>
@@ -98,7 +99,7 @@ typedef uint16_t in_port_t;
 #define vsyslog(l,f,a) /* Not supported */
 #define pthread_testcancel() /* Not supported */
 #define localtime_r(ti,tm) localtime_s(tm, ti)
-#define fnmatch(p,s,f) PathMatchSpecA(s,p)
+#define fnmatch(p,s,f) (!PathMatchSpecA(s,p))
 #endif
 
 #if defined(__APPLE__) && defined(__MACH__)
@@ -810,7 +811,7 @@ coc_long_value (const char *name, const char *value, long lower_bound,
 
 
 /* The real connect function. WARNING: cancellation point. */
-static int (*real_connect) (int fd, const struct sockaddr * addr,
+static int (WSAAPI *real_connect) (int fd, const struct sockaddr * addr,
 			    socklen_t addrlen);
 
 typedef struct coc_resolver {
@@ -1407,4 +1408,4 @@ HOOK(connect (SOCKET fd, const struct sockaddr *addr, socklen_t addrlen))
     }
 
   return real_connect (fd, addr, addrlen);
-}
+ }
