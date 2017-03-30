@@ -1,15 +1,11 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
-
-/Debug/vc140.idb
-/Debug/vc140.pdb
-/Debug/connect-or-cut.Build.CppClean.log
-/Debug
-/ipch/CONNECT-OR-CUT-ed9e9b66
+﻿/ipch
 *.db
 *.opendb
 /.vs/connect-or-cut/v14
-/cocwin/Debug
 /packages/minhook.1.3.3
-/tcpcontest/Debug
+/Release
+/vs2015/coc/Debug
+/vs2015/coc/Release
+/vs2015/tcpcontest/Debug
+/vs2015/tcpcontest/Release
+/Debug
