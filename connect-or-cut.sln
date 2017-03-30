@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "connect-or-cut", "connect-o
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cocwin", "cocwin\cocwin.vcxproj", "{09519461-063E-4EDA-A2DC-DBF87697C11A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tcpcontest", "tcpcontest\tcpcontest.vcxproj", "{1FF3631D-851D-4356-BB77-68F9B0E75C37}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{09519461-063E-4EDA-A2DC-DBF87697C11A}.Release|x64.Build.0 = Release|x64
 		{09519461-063E-4EDA-A2DC-DBF87697C11A}.Release|x86.ActiveCfg = Release|Win32
 		{09519461-063E-4EDA-A2DC-DBF87697C11A}.Release|x86.Build.0 = Release|Win32
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Debug|x64.ActiveCfg = Debug|x64
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Debug|x64.Build.0 = Debug|x64
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Debug|x86.ActiveCfg = Debug|Win32
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Debug|x86.Build.0 = Debug|Win32
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Release|x64.ActiveCfg = Release|x64
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Release|x64.Build.0 = Release|x64
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Release|x86.ActiveCfg = Release|Win32
+		{1FF3631D-851D-4356-BB77-68F9B0E75C37}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
