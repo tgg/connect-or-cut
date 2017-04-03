@@ -1217,6 +1217,16 @@ coc_init (void)
   /* Fail if there is a glob and DNS is not allowed. */
   if (needs_dns_lookup)
     {
+#ifdef _WIN32
+	  /* We need to initialize WinSock. It's safe to do so. */
+	  WSADATA wsaData;
+	  int iWSErr = WSAStartup (MAKEWORD(2, 2), &wsaData);
+
+	  if (iWSErr != 0)
+	    {
+		  DIE("Cannot initialize WinSock 2 API, aborting\n");
+	    }
+#endif
       bool dns_server_found = false;
 
       /* Read nameserver entries in /etc/resolv.conf */
@@ -1253,6 +1263,11 @@ coc_init (void)
 	{
 	  DIE ("No DNS allowed while some glob rule need one, aborting\n");
 	}
+
+#ifdef _WIN32
+	  WSACleanup ();
+#endif
+
     }
 
   initialized = true;
