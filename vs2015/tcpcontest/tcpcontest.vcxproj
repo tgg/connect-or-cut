@@ -21,6 +21,12 @@
   <ItemGroup>
     <ClCompile Include="..\..\tcpcontest.c" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Version.rc" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{1FF3631D-851D-4356-BB77-68F9B0E75C37}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
