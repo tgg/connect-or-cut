@@ -1103,8 +1103,6 @@ coc_sym_connect (void)
 		  DIE("Cannot hook CreateProcess, aborting\n");
 	  }
 
-	  /* TODO: add CreateProcess so that the hook persists into new processes. */
-
 	  if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
 	  {
 		  DIE("Cannot enable hooks, aborting\n");
@@ -1238,6 +1236,11 @@ coc_init (void)
       coc_entry_t *e;
       SLIST_FOREACH (e, &coc_list_head, entries)
       {
+	if (dns_server_found)
+	  {
+	    break;
+	  }
+
 	if (e->rule_type == COC_ALLOW &&
 	    e->addr_type != COC_GLOB_ADDR &&
 	    (!e->port || e->port == htons (53)))
@@ -1253,7 +1256,7 @@ coc_init (void)
 		     IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, &dns[i].addr.ipv6)))
 		  {
 		    dns_server_found = true;
-		    break; // TODO fix break
+		    break;
 		  }
 	      }
 	  }
