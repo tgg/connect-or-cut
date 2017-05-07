@@ -32,16 +32,28 @@
  * SUCH DAMAGE.
  */
 
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#include <SDKDDKVer.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <WinSock2.h>
+#include <Ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#define close closesocket
+#else
 #include <arpa/inet.h>
-#include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
+
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 static const char *me;
 
@@ -63,6 +75,19 @@ main (int argc, char *argv[])
     {
       usage (EXIT_FAILURE);
     }
+
+#ifdef _WIN32
+  WSADATA wsaData;
+  int err;
+
+  err = WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+  if (err != 0)
+  {
+	  fprintf(stderr, "WSAStartup: %d\n", err);
+	  exit(err);
+  }
+#endif
 
   struct addrinfo hints;
   struct addrinfo *result, *rp;
@@ -130,6 +155,10 @@ main (int argc, char *argv[])
     }
 
   freeaddrinfo (result);
+
+#ifdef _WIN32
+  WSACleanup ();
+#endif
 
   exit (rc);
 }

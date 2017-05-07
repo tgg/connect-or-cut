@@ -1,0 +1,11 @@
+﻿/ipch
+*.db
+*.opendb
+/.vs/connect-or-cut/v14
+/packages/minhook.1.3.3
+/Release
+/vs2015/coc/Debug
+/vs2015/coc/Release
+/vs2015/tcpcontest/Debug
+/vs2015/tcpcontest/Release
+/Debug

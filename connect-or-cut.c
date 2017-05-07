@@ -34,28 +34,73 @@
 
 #define _GNU_SOURCE
 
+#ifndef _WIN32
 #include <arpa/inet.h>
-#include <assert.h>
-#include <ctype.h>
 #include <dlfcn.h>
-#include <errno.h>
 #include <fnmatch.h>
-#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <resolv.h>
+#include <sys/queue.h>
+#include <sys/socket.h>
+#include <syslog.h>
+#define SOCKET int
+#define HOOK(fn) fn
+#define WSAAPI /* nothing */
+#else
+#define _CRT_SECURE_NO_WARNINGS
+#include <SDKDDKVer.h>
+#define WIN32_LEAN_AND_MEAN
+#ifdef COC_EXPORTS
+#define COC_API __declspec(dllexport)
+#else
+#define COC_API __declspec(dllimport)
+#endif
+#define HOOK(fn) COC_API __stdcall hook_##fn
+#include <windows.h>
+#include <WinSock2.h>
+#include <Ws2tcpip.h>
+#include <Shlwapi.h>
+#include <iphlpapi.h>
+#include "sys_queue.h"
+#include "MinHook.h"
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "shlwapi.lib")
+#pragma comment(lib, "IPHLPAPI.lib")
+#ifdef _M_X64
+#pragma comment(lib, "libMinHook-x64-v140-mtd.lib")
+#elif defined _M_IX86
+#pragma comment(lib, "libMinHook-x86-v140-mtd.lib")
+#endif
+#endif
+
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/queue.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <syslog.h>
 #include <time.h>
+
+#ifdef _WIN32
+typedef uint16_t in_port_t;
+#define MISSING_STRNDUP
+#define MAXNS 30
+#define LOG_ERR 3
+#define LOG_WARNING 4
+#define LOG_INFO 6
+#define LOG_DEBUG 7
+#define vsyslog(l,f,a) /* Not supported */
+#define pthread_testcancel() /* Not supported */
+#define localtime_r(ti,tm) localtime_s(tm, ti)
+#define fnmatch(p,s,f) (!PathMatchSpecA(s,p))
+#endif
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <AvailabilityMacros.h>
@@ -164,7 +209,11 @@ getprogname ()
 }
 
 #elif !defined(HAVE_GETPROGNAME)
+#ifdef _WIN32
+#define __progname _pgmptr
+#else
 extern char *__progname;
+#endif
 
 static inline const char *
 getprogname ()
@@ -180,7 +229,7 @@ static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
 static coc_log_target_t log_target = COC_STDERR_LOG;
 static char *log_file_name = NULL;
 
-#ifndef __SUNPRO_C
+#ifdef __GNUC__
 static void
 coc_log (coc_log_level_t level, const char *format, ...)
 __attribute__ ((__format__ (__printf__, 2, 3)));
@@ -762,10 +811,8 @@ coc_long_value (const char *name, const char *value, long lower_bound,
 
 
 /* The real connect function. WARNING: cancellation point. */
-static int (*real_connect) (int fd, const struct sockaddr * addr,
+static int (WSAAPI *real_connect) (int fd, const struct sockaddr * addr,
 			    socklen_t addrlen);
-
-#define NS "nameserver "
 
 typedef struct coc_resolver {
   union {
@@ -778,6 +825,11 @@ typedef struct coc_resolver {
 static void
 coc_read_resolv (coc_resolver_t * out, size_t * index)
 {
+	*index = 0;
+
+#ifndef _WIN32
+#define NS "nameserver "
+
   char buffer[1024];
   FILE *resolv = fopen ("/etc/resolv.conf", "r");
 
@@ -786,38 +838,129 @@ coc_read_resolv (coc_resolver_t * out, size_t * index)
       DIE ("Could not read /etc/resolv.conf, aborting\n");
     }
 
-  *index = 0;
+  while (fgets(buffer, sizeof(buffer), resolv) && *index < MAXNS)
+  {
+	  if (!strncmp(buffer, NS, sizeof(NS) - 1))
+	  {
+		  char *ns = buffer + sizeof(NS) - 1;
+		  size_t len = strlen(ns);
 
-  while (fgets (buffer, sizeof (buffer), resolv) && *index < MAXNS)
-    {
-      if (!strncmp (buffer, NS, sizeof (NS) - 1))
-	{
-	  char *ns = buffer + sizeof (NS) - 1;
-	  size_t len = strlen (ns);
+		  if (ns[len - 1] == '\n')
+		  {
+			  ns[len - 1] = '\0';
+		  }
 
-	  if (ns[len - 1] == '\n')
-	    {
-	      ns[len - 1] = '\0';
-	    }
+		  coc_log(COC_DEBUG_LOG_LEVEL, "DEBUG Found nameserver: %s\n", ns);
 
-	  coc_log (COC_DEBUG_LOG_LEVEL, "DEBUG Found nameserver: %s\n", ns);
+		  if (inet_pton(AF_INET, ns, &out[*index].addr.ipv4) == 1)
+		  {
+			  out[(*index)++].isv6 = false;
+		  }
+		  else if (inet_pton(AF_INET6, ns, &out[*index].addr.ipv6) == 1)
+		  {
+			  out[(*index)++].isv6 = true;
+		  }
+		  else
+		  {
+			  DIE("Cannot process nameserver: `%s'\n", ns);
+		  }
+	  }
+  }
 
-	  if (inet_pton (AF_INET, ns, &out[*index].addr.ipv4) == 1)
-	    {
-	      out[(*index)++].isv6 = false;
-	    }
-	  else if (inet_pton (AF_INET6, ns, &out[*index].addr.ipv6) == 1)
-	    {
-	      out[(*index)++].isv6 = true;
-	    }
-	  else
-	    {
-	      DIE ("Cannot process nameserver: `%s'\n", ns);
-	    }
+  fclose(resolv);
+
+#else
+	/* We rely on GetAdaptersAddresses:
+	 *   https://msdn.microsoft.com/en-us/library/windows/desktop/aa365915(v=vs.85).aspx
+	 * to retrieve IPv4 and IPv6 DNS server addresses.
+	 */
+	DWORD dwRetVal = 0;
+
+	// Set the flags to pass to GetAdaptersAddresses
+	ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_UNICAST;
+
+	LPVOID lpMsgBuf = NULL;
+
+	PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+	ULONG outBufLen = 0;
+	ULONG iterations = 0;
+
+	PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+	IP_ADAPTER_DNS_SERVER_ADDRESS *pDnServer = NULL;
+
+#define WORKING_BUFFER_SIZE 15000
+#define MAX_TRIES 3
+
+	// Allocate a 15 KB buffer to start with.
+	outBufLen = WORKING_BUFFER_SIZE;
+
+	do {
+		pAddresses = (IP_ADAPTER_ADDRESSES *) malloc (outBufLen);
+		if (pAddresses == NULL)
+		{
+			DIE ("Cannot allocate memory for IP_ADAPTER_ADDRESSES, aborting\n");
+		}
+
+		dwRetVal = GetAdaptersAddresses (AF_UNSPEC, flags, NULL, pAddresses, &outBufLen);
+
+		if (dwRetVal == ERROR_BUFFER_OVERFLOW)
+		{
+			free (pAddresses);
+			pAddresses = NULL;
+		}
+		else
+		{
+			break;
+		}
+
+		iterations++;
+
+	} while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (iterations < MAX_TRIES));
+
+	if (dwRetVal == NO_ERROR) {
+		// If successful, output some information from the data we received
+		pCurrAddresses = pAddresses;
+
+		while (pCurrAddresses) {
+			pDnServer = pCurrAddresses->FirstDnsServerAddress;
+
+			while (pDnServer && *index < MAXNS) {
+				ADDRESS_FAMILY family = pDnServer->Address.lpSockaddr->sa_family;
+
+				if (family == AF_INET6)
+				{
+					out[*index].addr.ipv6 = ((struct sockaddr_in6 *) pDnServer->Address.lpSockaddr)->sin6_addr;
+					out[*index].isv6 = true;
+				}
+				else if (family == AF_INET)
+				{
+					out[*index].addr.ipv4 = ((struct sockaddr_in *) pDnServer->Address.lpSockaddr)->sin_addr;
+					out[*index].isv6 = false;
+				}
+
+				(*index)++;
+				pDnServer = pDnServer->Next;
+			}
+
+			pCurrAddresses = pCurrAddresses->Next;
+		}
 	}
-    }
-
-  fclose (resolv);
+	else {
+		if (dwRetVal == ERROR_NO_DATA)
+			DIE("Cannot find any DNS server, aborting\n");
+		else {
+			if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+				(LPTSTR)&lpMsgBuf, 0, NULL)) {
+				coc_log(COC_ERROR_LOG_LEVEL, "ERROR %s\n", lpMsgBuf);
+				LocalFree(lpMsgBuf);
+				free (pAddresses);
+				exit(1);
+			}
+		}
+	}
+#endif
 }
 
 const char *
@@ -826,11 +969,147 @@ coc_version (void)
   return version;
 }
 
+#ifdef _WIN32
+
+#ifdef UNICODE
+#define LoadLib "LoadLibraryW"
+#else
+#define LoadLib "LoadLibraryA"
+#endif
+
+BOOL coc_inject(HANDLE hProcess)
+{
+	LPTHREAD_START_ROUTINE lpLoadLibrary = (LPTHREAD_START_ROUTINE) GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), LoadLib);
+
+	if (lpLoadLibrary == NULL)
+	{
+		return FALSE;
+	}
+
+	TCHAR szPath[MAX_PATH];
+	HMODULE self = GetModuleHandle(TEXT("connect-or-cut.dll"));
+	if (self == NULL)
+	{
+		return FALSE;
+	}
+
+	if (GetModuleFileName(self, szPath, MAX_PATH) == 0)
+	{
+		return FALSE;
+	}
+
+	int iLen = lstrlen(szPath) + 1;
+	int cbSize = iLen * sizeof(TCHAR);
+
+	LPVOID lpPath = VirtualAllocEx(hProcess, NULL, cbSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	if (lpPath == NULL)
+	{
+		return FALSE;
+	}
+
+	if (!WriteProcessMemory(hProcess, lpPath, szPath, cbSize, NULL))
+	{
+		return FALSE;
+	}
+
+	HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, lpLoadLibrary, lpPath, 0, NULL);
+	if (hThread == NULL)
+	{
+		return FALSE;
+	}
+
+	if (WaitForSingleObject(hThread, INFINITE) != WAIT_OBJECT_0)
+	{
+		return FALSE;
+	}
+
+	DWORD dwExitCode;
+	if (!GetExitCodeThread(hThread, &dwExitCode))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+int HOOK(connect(SOCKET fd, const struct sockaddr *addr, socklen_t addrlen));
+void coc_init(void);
+BOOL(WINAPI *real_CreateProcess) (LPCTSTR lpApplicationName,
+	LPTSTR lpCommandLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCTSTR lpCurrentDirectory,
+	LPSTARTUPINFO lpStartupInfo,
+	LPPROCESS_INFORMATION lpProcessInformation);
+BOOL HOOK(CreateProcess(
+	LPCTSTR lpApplicationName,
+	LPTSTR lpCommandLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCTSTR lpCurrentDirectory,
+	LPSTARTUPINFO lpStartupInfo,
+	LPPROCESS_INFORMATION lpProcessInformation))
+{
+	// Make sure to start the process in a suspended state, then inject
+	// ourselves
+	bool resume = !(((dwCreationFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED));
+	dwCreationFlags |= CREATE_SUSPENDED;
+	BOOL status = real_CreateProcess(
+		lpApplicationName, lpCommandLine,
+		lpProcessAttributes, lpThreadAttributes,
+		bInheritHandles, dwCreationFlags,
+		lpEnvironment, lpCurrentDirectory,
+		lpStartupInfo, lpProcessInformation);
+
+	if (status)
+	{
+		coc_inject(lpProcessInformation->hProcess);
+	}
+
+	if (resume)
+	{
+		ResumeThread(lpProcessInformation->hThread);
+	}
+
+	return status;
+}
+#endif
+
 static inline void
 coc_sym_connect (void)
 {
   if (real_connect == NULL)
     {
+#ifdef _WIN32
+	  if (MH_Initialize() != MH_OK)
+	  {
+		  DIE("Cannot initialize MinHook, aborting\n");
+	  }
+
+	  if (MH_CreateHookApiEx(L"ws2_32", "connect", &hook_connect, (LPVOID *) &real_connect, NULL) != MH_OK)
+	  {
+		  DIE("Cannot hook connect(), aborting\n");
+	  }
+
+	  /* TODO: add WSAConnect, ConnectEx */
+	  if (MH_CreateHook(&CreateProcess, &hook_CreateProcess, (LPVOID *) &real_CreateProcess) != MH_OK)
+	  {
+		  DIE("Cannot hook CreateProcess, aborting\n");
+	  }
+
+	  /* TODO: add CreateProcess so that the hook persists into new processes. */
+
+	  if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
+	  {
+		  DIE("Cannot enable hooks, aborting\n");
+	  }
+#else
       real_connect =
 	(int (*)(int, const struct sockaddr *, socklen_t)) dlsym (RTLD_NEXT,
 								  "connect");
@@ -846,13 +1125,34 @@ coc_sym_connect (void)
 
 	  DIE ("%s\n", error);
 	}
+#endif
     }
 }
+
+#ifdef _WIN32
+BOOL APIENTRY DllMain(HMODULE hModule,
+	DWORD  ul_reason_for_call,
+	LPVOID lpReserved
+)
+{
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+		coc_init ();
+		break;
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
+		break;
+	}
+	return TRUE;
+}
+#endif
 
 /* Called by dynamic linker when library is loaded. */
 #ifdef __SUNPRO_C
 #pragma init (coc_init)
-#else
+#elif defined(__GNUC__)
 void coc_init (void) __attribute__ ((constructor));
 #endif
 
@@ -917,6 +1217,16 @@ coc_init (void)
   /* Fail if there is a glob and DNS is not allowed. */
   if (needs_dns_lookup)
     {
+#ifdef _WIN32
+	  /* We need to initialize WinSock. It's safe to do so. */
+	  WSADATA wsaData;
+	  int iWSErr = WSAStartup (MAKEWORD(2, 2), &wsaData);
+
+	  if (iWSErr != 0)
+	    {
+		  DIE("Cannot initialize WinSock 2 API, aborting\n");
+	    }
+#endif
       bool dns_server_found = false;
 
       /* Read nameserver entries in /etc/resolv.conf */
@@ -943,7 +1253,7 @@ coc_init (void)
 		     IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, &dns[i].addr.ipv6)))
 		  {
 		    dns_server_found = true;
-		    break;
+		    break; // TODO fix break
 		  }
 	      }
 	  }
@@ -953,6 +1263,11 @@ coc_init (void)
 	{
 	  DIE ("No DNS allowed while some glob rule need one, aborting\n");
 	}
+
+#ifdef _WIN32
+	  WSACleanup ();
+#endif
+
     }
 
   initialized = true;
@@ -1022,7 +1337,7 @@ coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
  * We don't do anything except for AF_INET and AF_INET6.
  */
 int
-connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
+HOOK(connect (SOCKET fd, const struct sockaddr *addr, socklen_t addrlen))
 {
   if (!initialized)
     {
@@ -1108,4 +1423,4 @@ connect (int fd, const struct sockaddr *addr, socklen_t addrlen)
     }
 
   return real_connect (fd, addr, addrlen);
-}
+ }
