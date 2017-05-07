@@ -1,7 +1,7 @@
 SRC := connect-or-cut.c
 OBJ := $(SRC:.c=.o)
 ABI := 1
-VER := $(ABI).0.2
+VER := $(ABI).0.3
 LIB := libconnect-or-cut.so
 TGT := $(LIB).$(VER)
 TST := tcpcontest
