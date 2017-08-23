@@ -18,6 +18,9 @@
     <ClCompile Include="connect-or-cut.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="inject.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sys_queue.h">

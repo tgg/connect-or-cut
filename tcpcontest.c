@@ -47,6 +47,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#define SOCKET int
 #endif
 
 #include <errno.h>
@@ -109,7 +110,7 @@ main (int argc, char *argv[])
 
   for (rp = result; rp != NULL; rp = rp->ai_next)
     {
-      int s = socket (rp->ai_family, rp->ai_socktype,
+      SOCKET s = socket (rp->ai_family, rp->ai_socktype,
 		      rp->ai_protocol);
       if (s == -1)
 	{

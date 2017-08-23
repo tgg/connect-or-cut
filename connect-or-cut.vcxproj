@@ -144,6 +144,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="connect-or-cut.c" />
+    <ClCompile Include="inject.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />

@@ -73,6 +73,7 @@
 #elif defined _M_IX86
 #pragma comment(lib, "libMinHook-x86-v140-mtd.lib")
 #endif
+extern BOOL LoadCoCLibrary(HANDLE);
 #endif
 
 #include <assert.h>
@@ -751,7 +752,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
   return 0;
 }
 
-static int
+static size_t
 coc_rules_add (const char *rules, size_t rule_type)
 {
   size_t count = 0;
@@ -811,7 +812,7 @@ coc_long_value (const char *name, const char *value, long lower_bound,
 
 
 /* The real connect function. WARNING: cancellation point. */
-static int (WSAAPI *real_connect) (int fd, const struct sockaddr * addr,
+static int (WSAAPI *real_connect) (SOCKET fd, const struct sockaddr * addr,
 			    socklen_t addrlen);
 
 typedef struct coc_resolver {
@@ -971,67 +972,6 @@ coc_version (void)
 
 #ifdef _WIN32
 
-#ifdef UNICODE
-#define LoadLib "LoadLibraryW"
-#else
-#define LoadLib "LoadLibraryA"
-#endif
-
-BOOL coc_inject(HANDLE hProcess)
-{
-	LPTHREAD_START_ROUTINE lpLoadLibrary = (LPTHREAD_START_ROUTINE) GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), LoadLib);
-
-	if (lpLoadLibrary == NULL)
-	{
-		return FALSE;
-	}
-
-	TCHAR szPath[MAX_PATH];
-	HMODULE self = GetModuleHandle(TEXT("connect-or-cut.dll"));
-	if (self == NULL)
-	{
-		return FALSE;
-	}
-
-	if (GetModuleFileName(self, szPath, MAX_PATH) == 0)
-	{
-		return FALSE;
-	}
-
-	int iLen = lstrlen(szPath) + 1;
-	int cbSize = iLen * sizeof(TCHAR);
-
-	LPVOID lpPath = VirtualAllocEx(hProcess, NULL, cbSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	if (lpPath == NULL)
-	{
-		return FALSE;
-	}
-
-	if (!WriteProcessMemory(hProcess, lpPath, szPath, cbSize, NULL))
-	{
-		return FALSE;
-	}
-
-	HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, lpLoadLibrary, lpPath, 0, NULL);
-	if (hThread == NULL)
-	{
-		return FALSE;
-	}
-
-	if (WaitForSingleObject(hThread, INFINITE) != WAIT_OBJECT_0)
-	{
-		return FALSE;
-	}
-
-	DWORD dwExitCode;
-	if (!GetExitCodeThread(hThread, &dwExitCode))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 int HOOK(connect(SOCKET fd, const struct sockaddr *addr, socklen_t addrlen));
 void coc_init(void);
 BOOL(WINAPI *real_CreateProcess) (LPCTSTR lpApplicationName,
@@ -1069,16 +1009,17 @@ BOOL HOOK(CreateProcess(
 
 	if (status)
 	{
-		coc_inject(lpProcessInformation->hProcess);
-	}
+		LoadCoCLibrary(lpProcessInformation->hProcess);
 
-	if (resume)
-	{
-		ResumeThread(lpProcessInformation->hThread);
+		if (resume)
+		{
+			ResumeThread(lpProcessInformation->hThread);
+		}
 	}
 
 	return status;
 }
+
 #endif
 
 static inline void
@@ -1102,8 +1043,6 @@ coc_sym_connect (void)
 	  {
 		  DIE("Cannot hook CreateProcess, aborting\n");
 	  }
-
-	  /* TODO: add CreateProcess so that the hook persists into new processes. */
 
 	  if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
 	  {
@@ -1337,7 +1276,7 @@ coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
  * We don't do anything except for AF_INET and AF_INET6.
  */
 int
-HOOK(connect (SOCKET fd, const struct sockaddr *addr, socklen_t addrlen))
+HOOK(connect(SOCKET fd, const struct sockaddr *addr, socklen_t addrlen))
 {
   if (!initialized)
     {
@@ -1412,6 +1351,7 @@ HOOK(connect (SOCKET fd, const struct sockaddr *addr, socklen_t addrlen))
 		pthread_testcancel ();
 		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%hu\n", str,
 			 ntohs (port));
+		// TODO WSASetLastError
 		errno = EACCES;
 		return -1;
 	      }

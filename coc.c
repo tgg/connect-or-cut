@@ -1,64 +1,49 @@
+﻿/* coc -- Injects connect-or-cut DLL into a new Windows process.
+*
+* Copyright Ⓒ 2017  Thomas Girard <thomas.g.girard@free.fr>
+*
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions
+* are met:
+*
+*  * Redistributions of source code must retain the above copyright
+*    notice, this list of conditions and the following disclaimer.
+*
+*  * Redistributions in binary form must reproduce the above copyright
+*    notice, this list of conditions and the following disclaimer in the
+*    documentation and/or other materials provided with the distribution.
+*
+*  * Neither the name of the author nor the names of its contributors
+*    may be used to endorse or promote products derived from this software
+*    without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+* OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+* OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGE.
+*/
+
 #include <sdkddkver.h>
 #include <stdio.h>
 #include <tchar.h>
 #include <Windows.h>
 
-#ifdef UNICODE
-#define LoadLib "LoadLibraryW"
-#else
-#define LoadLib "LoadLibraryA"
-#endif
-
-//TCHAR szPath[MAX_PATH]; /* TODO: full path to connect-or-cut.dll */
-
-BOOL coc_inject(HANDLE hProcess, TCHAR *szPath)
-{
-	LPTHREAD_START_ROUTINE lpLoadLibrary = (LPTHREAD_START_ROUTINE) GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), LoadLib);
-
-	if (lpLoadLibrary == NULL)
-	{
-		return FALSE;
-	}
-
-	int iLen = lstrlen(szPath) + 1;
-	int cbSize = iLen * sizeof(TCHAR);
-
-	LPVOID lpPath = VirtualAllocEx(hProcess, NULL, cbSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	if (lpPath == NULL)
-	{
-		return FALSE;
-	}
-
-	if (!WriteProcessMemory(hProcess, lpPath, szPath, cbSize, NULL))
-	{
-		return FALSE;
-	}
-
-	HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, lpLoadLibrary, lpPath, 0, NULL);
-	if (hThread == NULL)
-	{
-		return FALSE;
-	}
-
-	if (WaitForSingleObject(hThread, INFINITE) != WAIT_OBJECT_0)
-	{
-		return FALSE;
-	}
-
-	DWORD dwExitCode;
-	if (!GetExitCodeThread(hThread, &dwExitCode))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
+extern BOOL LoadCoCLibrary(HANDLE);
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	if (argc != 3)
+	if (argc == 0)
 	{
-		wprintf(L"Usage: %s [cmdline] [lib]\n", argv[0]);
+		wprintf(L"Usage: %s COMMAND [ARGS]\n", argv[0]);
 		return 1;
 	}
 
@@ -68,19 +53,25 @@ int _tmain(int argc, _TCHAR* argv[])
 	ZeroMemory(&si, sizeof(si));
 	ZeroMemory(&pi, sizeof(pi));
 
-	if (!CreateProcess(NULL, argv[1], NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi))
+	// Build the full command-line, making sure to add "" around each argument.
+	LPWSTR lpwsCommandLine = GetCommandLine();
+
+	if (!CreateProcess(NULL, argv[1], NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &pi))
 	{
 		// TODO
 	}
 
-	coc_inject(pi.hProcess, argv[2]);
+	LoadCoCLibrary(pi.hProcess);
 
 	ResumeThread(pi.hThread);
 
 	WaitForSingleObject(pi.hProcess, INFINITE);
 
+	DWORD dwExitCode;
+	GetExitCodeProcess(pi.hProcess, &dwExitCode);
+
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
 
-	return 0;
+	return dwExitCode;
 }
