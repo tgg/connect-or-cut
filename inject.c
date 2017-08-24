@@ -61,7 +61,7 @@ BOOL LoadProcessLibrary(HANDLE hProcess, TCHAR *szLibraryPath)
 	int iLibraryPathLen = lstrlen(szLibraryPath) + 1;
 	SIZE_T dwSize = iLibraryPathLen * sizeof(TCHAR);
 
-	LPVOID lpPath = VirtualAllocEx(hProcess, NULL, dwSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	LPVOID lpPath = VirtualAllocEx(hProcess, NULL, dwSize, MEM_COMMIT, PAGE_READWRITE);
 	if (lpPath == NULL)
 	{
 		// Could not allocate memory in the process. GetLastError() will contain
@@ -131,10 +131,10 @@ BOOL LoadProcessLibrary(HANDLE hProcess, TCHAR *szLibraryPath)
 		return FALSE;
 	}
 
-	/*if (!VirtualFreeEx(hProcess, lpPath, 0, MEM_RELEASE))
+	if (!VirtualFreeEx(hProcess, lpPath, 0, MEM_RELEASE))
 	{
 		return FALSE;
-	}*/
+	}
 
 	return TRUE;
 }
