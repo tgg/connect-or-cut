@@ -8,5 +8,8 @@ configuration:
   - Debug
   - Release
 
+before_build:
+  - cmd: nuget restore
+
 build:
   project: connect-or-cut.sln
