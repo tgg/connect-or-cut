@@ -223,7 +223,7 @@ getprogname ()
 }
 #endif
 
-static const char version[] = "connect-or-cut v1.0.3";
+static const char version[] = "connect-or-cut v1.0.4";
 static volatile bool initialized = false;
 static bool needs_dns_lookup = false;
 static coc_log_level_t log_level = COC_BLOCK_LOG_LEVEL;
@@ -1177,6 +1177,11 @@ coc_init (void)
       coc_entry_t *e;
       SLIST_FOREACH (e, &coc_list_head, entries)
       {
+	if (dns_server_found)
+	  {
+	    break;
+	  }
+
 	if (e->rule_type == COC_ALLOW &&
 	    e->addr_type != COC_GLOB_ADDR &&
 	    (!e->port || e->port == htons (53)))
@@ -1192,7 +1197,7 @@ coc_init (void)
 		     IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, &dns[i].addr.ipv6)))
 		  {
 		    dns_server_found = true;
-		    break; // TODO fix break
+		    break;
 		  }
 	      }
 	  }
