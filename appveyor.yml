@@ -7,3 +7,6 @@ platform:
 configuration:
   - Debug
   - Release
+
+build:
+  project: connect-or-cut.sln
