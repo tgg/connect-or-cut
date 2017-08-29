@@ -148,6 +148,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\coc.c" />
     <ClCompile Include="..\..\inject.c" />
+    <ClCompile Include="error.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />

@@ -48,6 +48,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #define SOCKET int
+#define gai_strerrorA gai_strerror
 #endif
 
 #include <errno.h>
@@ -104,7 +105,7 @@ main (int argc, char *argv[])
 
   if (addr != 0)
     {
-      fprintf (stderr, "getaddrinfo: %s\n", gai_strerror (addr));
+      fprintf (stderr, "getaddrinfo: %s\n", gai_strerrorA (addr));
       exit (rc);
     }
 
@@ -135,7 +136,7 @@ main (int argc, char *argv[])
 	exit(EXIT_FAILURE);
       }
 
-      rc = connect (s, rp->ai_addr, rp->ai_addrlen);
+    rc = connect (s, rp->ai_addr, (int) rp->ai_addrlen);
 
       if (rc == 0)
 	{

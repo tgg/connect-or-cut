@@ -32,38 +32,122 @@
 * SUCH DAMAGE.
 */
 
+#define _CRT_SECURE_NO_WARNINGS
 #include <sdkddkver.h>
 #include <stdio.h>
 #include <tchar.h>
 #include <Windows.h>
 
 extern BOOL LoadCoCLibrary(HANDLE);
+extern void ErrorExit(LPTSTR lpszFunction);
+
+static TCHAR* MoveBeforeFirstArgument(TCHAR *lpCommandLine)
+{
+	TCHAR* p = lpCommandLine;
+	BOOL bInQuotes = FALSE;
+	size_t uiBackslashes = 0;
+
+	while (*p != _T('\0'))
+	{
+		if (*p == _T('\\'))
+		{
+			uiBackslashes++;
+		}
+		else if (*p == _T('"'))
+		{
+			if (uiBackslashes % 2 == 0)
+			{
+				bInQuotes = !bInQuotes;
+			}
+
+			uiBackslashes = 0;
+		}
+		else if (*p == _T(' '))
+		{
+			uiBackslashes = 0;
+
+			if (!bInQuotes)
+				break;
+		}
+		else
+		{
+			uiBackslashes = 0;
+		}
+
+		p++;
+	}
+
+	return p;
+}
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	if (argc == 0)
+	if (argc == 1)
 	{
-		wprintf(L"Usage: %s COMMAND [ARGS]\n", argv[0]);
+		_tprintf(_T("Usage: %s COMMAND [ARGS]\n"), argv[0]);
 		return 1;
 	}
 
+ 	TCHAR *lpThisCommandLine = GetCommandLine();
+
+	size_t lpThisLen = _tcslen(lpThisCommandLine) + 1;
+	HANDLE hHeap = GetProcessHeap();
+	if (hHeap == NULL)
+	{
+		ErrorExit(_T("GetProcessHeap"));
+	}
+
+	TCHAR *lpThatCommandLine = HeapAlloc(hHeap, HEAP_NO_SERIALIZE | HEAP_ZERO_MEMORY, lpThisLen * sizeof(TCHAR));
+	if (lpThatCommandLine == NULL)
+	{
+		ErrorExit(_T("HeapAlloc"));
+	}
+
+	_tcsncpy(lpThatCommandLine, lpThisCommandLine, lpThisLen);
+
+	TCHAR *lpOtherCommandLine = MoveBeforeFirstArgument(lpThatCommandLine);
+
+	*lpOtherCommandLine = _T('\0');
+	lpOtherCommandLine++;
+
+	// Weird
+	if (*lpOtherCommandLine == _T(' '))
+		lpOtherCommandLine++;
+
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
-
 	ZeroMemory(&si, sizeof(si));
 	ZeroMemory(&pi, sizeof(pi));
 
-	// Build the full command-line, making sure to add "" around each argument.
-	LPWSTR lpwsCommandLine = GetCommandLine();
-
-	if (!CreateProcess(NULL, argv[1], NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &pi))
+	// Do we really need to pass CREATE_UNICODE_ENVIRONMENT here?
+	if (!CreateProcess(NULL, lpOtherCommandLine, NULL, NULL, TRUE, CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi))
 	{
-		// TODO
+		ErrorExit(_T("CreateProcess"));
 	}
 
-	LoadCoCLibrary(pi.hProcess);
+	HeapFree(hHeap, HEAP_NO_SERIALIZE, lpThatCommandLine);
+	lpThatCommandLine = NULL;
 
-	ResumeThread(pi.hThread);
+	if (!LoadCoCLibrary(pi.hProcess))
+	{
+		ErrorExit(_T("LoadCoCLibrary"));
+	}
+
+	if (ResumeThread(pi.hThread) == -1)
+	{
+		ErrorExit(_T("ResumeThread"));
+	}
+
+	// TODO add a flag to coc to override this
+	BOOL bWaitForCompletion = FALSE;
+
+	if (!bWaitForCompletion)
+	{
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+
+		return 0;
+	}
 
 	WaitForSingleObject(pi.hProcess, INFINITE);
 

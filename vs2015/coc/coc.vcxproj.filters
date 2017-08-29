@@ -21,6 +21,9 @@
     <ClCompile Include="..\..\inject.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="error.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">

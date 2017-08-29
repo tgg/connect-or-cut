@@ -42,9 +42,9 @@
 #define LoadLib "LoadLibraryA"
 #endif
 
-BOOL LoadProcessLibrary(HANDLE hProcess, TCHAR *szLibraryPath)
+BOOL LoadProcessLibrary(HANDLE hProcess, LPTSTR lpszLibraryPath)
 {
-	if (hProcess == NULL || szLibraryPath == NULL)
+	if (hProcess == NULL || lpszLibraryPath == NULL)
 	{
 		// Assume GetLastError() will provide explanation on these erroneous values.
 		return FALSE;
@@ -58,7 +58,7 @@ BOOL LoadProcessLibrary(HANDLE hProcess, TCHAR *szLibraryPath)
 		return FALSE;
 	}
 
-	int iLibraryPathLen = lstrlen(szLibraryPath) + 1;
+	size_t iLibraryPathLen = _tcslen(lpszLibraryPath) + 1;
 	SIZE_T dwSize = iLibraryPathLen * sizeof(TCHAR);
 
 	LPVOID lpPath = VirtualAllocEx(hProcess, NULL, dwSize, MEM_COMMIT, PAGE_READWRITE);
@@ -69,7 +69,7 @@ BOOL LoadProcessLibrary(HANDLE hProcess, TCHAR *szLibraryPath)
 		return FALSE;
 	}
 
-	if (!WriteProcessMemory(hProcess, lpPath, szLibraryPath, dwSize, NULL))
+	if (!WriteProcessMemory(hProcess, lpPath, lpszLibraryPath, dwSize, NULL))
 	{
 		// Fail gracefully: release allocated memory (ignoring error), then
 		// restore initial error so that GetLastError() in the callee works.
@@ -157,20 +157,19 @@ BOOL LoadCoCLibrary(HANDLE hProcess)
 		return FALSE;
 	}
 
-	TCHAR* lastBackslash = _tcsrchr(szThisPath, _T('\\'));
-	if (lastBackslash == NULL)
+	LPTSTR lpszLastBackslash = _tcsrchr(szThisPath, _T('\\'));
+	if (lpszLastBackslash == NULL)
 	{
-		// TODO
+		SetLastError(ERROR_BAD_PATHNAME);
 		return FALSE;
 	}
 
-	_tcsncpy(szCoCPath, szThisPath, lastBackslash + 1 - szThisPath);
+	_tcsncpy(szCoCPath, szThisPath, lpszLastBackslash + 1 - szThisPath);
 
 	// Which DLL to use depends on bitnesss. Return is TRUE iif process runs in 32 bits on Windows 64.
 	BOOL isWow64 = FALSE;
 	if (!IsWow64Process(hProcess, &isWow64))
 	{
-		// TODO
 		return FALSE;
 	}
 

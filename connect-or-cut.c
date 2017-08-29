@@ -1009,7 +1009,11 @@ BOOL HOOK(CreateProcess(
 
 	if (status)
 	{
-		LoadCoCLibrary(lpProcessInformation->hProcess);
+		if (!LoadCoCLibrary(lpProcessInformation->hProcess))
+		{
+			// Injection failed. Let's report it and continue.
+			coc_log(COC_ERROR_LOG_LEVEL, "Failed to inject connect-or-cut into new process");
+		}
 
 		if (resume)
 		{
