@@ -211,7 +211,7 @@ getprogname ()
 
 #elif !defined(HAVE_GETPROGNAME)
 #ifdef _WIN32
-#define __progname _pgmptr
+char __progname[_MAX_FNAME];
 #else
 extern char *__progname;
 #endif
@@ -219,6 +219,11 @@ extern char *__progname;
 static inline const char *
 getprogname ()
 {
+#ifdef _WIN32
+	char  szThisModule[MAX_PATH] = { 0 };
+	GetModuleFileNameA(NULL, szThisModule, MAX_PATH);
+	_splitpath(szThisModule, NULL, NULL, __progname, NULL);
+#endif
   return __progname;
 }
 #endif
@@ -1012,7 +1017,7 @@ BOOL HOOK(CreateProcess(
 		if (!LoadCoCLibrary(lpProcessInformation->hProcess))
 		{
 			// Injection failed. Let's report it and continue.
-			coc_log(COC_ERROR_LOG_LEVEL, "Failed to inject connect-or-cut into new process");
+			coc_log(COC_ERROR_LOG_LEVEL, "Failed to inject connect-or-cut into new process: %zu", GetLastError());
 		}
 
 		if (resume)
@@ -1138,8 +1143,13 @@ coc_init (void)
 	    {
 	      log_path = ".";
 	    }
+#ifdef _WIN32
+#define COC_PATH_SEP "\\"
+#else
+#define COC_PATH_SEP "/"
+#endif
 	  log_file_name = malloc (strlen (log_path) + strlen (progname) + 6);
-	  sprintf (log_file_name, "%s/%s.coc", log_path, progname);
+	  sprintf (log_file_name, "%s" COC_PATH_SEP "%s.coc", log_path, progname);
 	}
     }
 
