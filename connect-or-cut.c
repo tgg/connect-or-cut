@@ -248,10 +248,10 @@ coc_log (coc_log_level_t level, const char *format, ...)
     {
       struct tm now_tm;
       time_t now;
-      char buffer[sizeof ("mmm DD HH:MM:SS ")];
+      char buffer[sizeof ("YYYY-MM-DDTHH:MM:SS ")];
       time (&now);
       localtime_r (&now, &now_tm);
-      strftime (buffer, sizeof (buffer), "%h %e %T ", &now_tm);
+      strftime (buffer, sizeof (buffer), "%Y-%m-%dT%H:%M:%S ", &now_tm);
 
       if ((log_target & COC_FILE_LOG) == COC_FILE_LOG)
 	{
