@@ -60,26 +60,30 @@ displayed on stderr.
     blocked, then shell snippets to set the chosen configuration are displayed.
     
     OPTIONS:
-     -d, --allow-dns           	Allow connections to DNS nameservers.
-     -a, --allow=ADDRESS[:PORT]	Allow connections to ADDRESS[:PORT].
-     -b, --block=ADDRESS[:PORT]	Prevent connections to ADDRESS[:PORT].
-     -h, --help                	Print this help message.
-     -t, --log-target=LOG      	Where to log. LOG is a comma-separated list
-                               	that can contain the following values:
-                               	  - stderr	This is the default
-                               	  - syslog	Write to syslog
-                               	  - file	Write to COMMAND.coc file
-     -p, --log-path=PATH      	Path for file log.
-     -l, --log-level=LEVEL     	What to log. LEVEL can contain one of the
-                               	following values:
-                               	  - silent	Do not log anything
-                               	  - error	Log errors
-                               	  - block	Log errors and blocked
-                               	            connections
-                               	  - allow	Log errors, blocked and
-                               	            allowed connections
-                               	  - debug	Log everything
-    -v, --version             	Print connect-or-cut version.
+     -d, --allow-dns                   	Allow connections to DNS nameservers.
+     -a, --allow=ADDRESS[/BITS][:PORT] 	Allow connections to ADDRESS[/BITS][:PORT].
+     -b, --block=ADDRESS[/BITS][:PORT] 	Prevent connections to ADDRESS[/BITS][:PORT].
+                                       	BITS is the number of bits in CIDR notation
+                                       	prefix. When BITS is specified, the rule
+                                       	matches the IP range.
+     -h, --help                        	Print this help message.
+     -t, --log-target=LOG              	Where to log. LOG is a comma-separated list
+                                       	that can contain the following values:
+                                       	  - stderr      This is the default
+                                       	  - syslog      Write to syslog
+                                       	  - file        Write to COMMAND.coc file
+     -p, --log-path=PATH               	Path for file log.
+     -l, --log-level=LEVEL             	What to log. LEVEL can contain one of the
+                                       	following values:
+                                       	  - silent      Do not log anything
+                                       	  - error       Log errors
+                                       	  - block       Log errors and blocked
+                                       	                connections
+                                       	  - allow       Log errors, blocked and
+                                       	                allowed connections
+                                       	  - debug       Log everything
+     -v, --version                     	Print connect-or-cut version.
+
 
 ## Use cases
 
