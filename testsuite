@@ -76,6 +76,7 @@ WD="`dirname $0`"
 test -f "$WD/tcpcontest" || _die "Missing tcpcontest helper program!"
 
 ALLOW host ::1 port 50 with args -a ::1 -b \'*\'
+ALLOW host ::1 port 50 with args -a [::1] -b \'*\'
 ALLOW host ::1 port 50 with args -a [::1]:50 -b \'*\'
 BLOCK host ::1 port 50 with args -a [::1]:49 -b \'*\'
 ALLOW host ::1 port 21 with args -a [::1]:ftp -b \'*\'
@@ -90,6 +91,14 @@ ALLOW host 127.0.0.1 port 50 with args -a \'*\'
 BLOCK host 127.0.0.1 port 50 with args -b \'*\'
 ALLOW host localhost port 50 with args -a localhost -b \'*\'
 BLOCK host localhost port 50 with args -a localhost:49 -b \'*\'
+ALLOW host 127.0.0.1 port 80 with args -a ::ffff:7f00:1 -b \'*\'
+BLOCK host 127.0.0.2 port 80 with args -a ::ffff:7f00:1 -b \'*\'
+ALLOW host 127.0.0.1 port 80 with args -a [::ffff:7f00:1]:80 -b \'*\'
+BLOCK host 127.0.0.1 port 80 with args -a [::ffff:7f00:1]:81 -b \'*\'
+ALLOW host ::ffff:7f00:1 port 80 with args -a 127.0.0.1 -b \'*\'
+BLOCK host ::ffff:7f00:2 port 80 with args -a 127.0.0.1 -b \'*\'
+ALLOW host ::ffff:7f00:1 port 80 with args -a 127.0.0.1:80 -b \'*\'
+BLOCK host ::ffff:7f00:1 port 80 with args -a 127.0.0.1:81 -b \'*\'
 ALLOW host www.google.com port 80 with args -d -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
 #ALLOW host lwn.net port 80 with args -a lwn.net:80 -b \'*\'
 ABORT_ON host www.google.com port 80 with args -a \'*.google.com\' -a \'*.1e100.net\' -b \'*\'
@@ -99,6 +108,183 @@ ABORT_ON host ::1 port 80 with args -a a::b::a
 ABORT_ON host ::1 port 80 with args -a fffff::
 ABORT_ON host localhost port 80 with args -a 256.168.10.192
 ABORT_ON host ::1 port 80 with args -a 256:fffff::
+
+
+# CIDR notation test
+
+## IPv4
+
+### Standard
+ALLOW host 127.0.0.1 port 80 with args -a 127.0.0.1 -b \'*\'
+ALLOW host 127.0.0.1 port 80 with args -a 127.0.0.1/24 -b \'*\'
+BLOCK host 127.0.1.1 port 80 with args -a 127.0.0.1/24 -b \'*\'
+BLOCK host 127.0.0.1 port 80 with args -b 127.0.0.1
+
+### With port
+ALLOW host 127.0.0.1 port 80 with args -a 127.0.0.0/24:80 -b \'*\'
+BLOCK host 127.0.0.1 port 80 with args -a 127.0.0.0/24:81 -b \'*\'
+BLOCK host 127.0.1.0 port 80 with args -a 127.0.0.0/24:80 -b \'*\'
+BLOCK host 127.0.0.1 port 80 with args -b 127.0.0.0/24:80
+ALLOW host 127.0.0.0 port 21 with args -a 127.0.0.0/24:ftp -b \'*\'
+
+### Invalid syntax
+ABORT_ON host 127.0.0.1 port 80 with args -a 127.0.0.1/-1 -b \'*\'
+ABORT_ON host 127.0.0.1 port 80 with args -a 127.0.0.1/33 -b \'*\'
+ABORT_ON host 127.0.0.1 port 80 with args -a 127.0.0.1/a -b \'*\'
+ABORT_ON host 127.0.0.1 port 80 with args -a 127.0.0.1/ -b \'*\'
+ABORT_ON host 127.0.0.1 port 80 with args -a 127.0.0.1/24/24 -b \'*\'
+ABORT_ON host 127.0.0.1 port 80 with args -a 127.0.0.1:80/24 -b \'*\'
+ABORT_ON host 127.0.0.1 port 80 with args -a 127.0.0/24.1 -b \'*\'
+
+### 32bit mask
+ALLOW host 127.0.0.1 port 80 with args -a 127.0.0.1/32 -b \'*\'
+BLOCK host 127.0.0.2 port 80 with args -a 127.0.0.1/32 -b \'*\'
+BLOCK host 127.0.0.1 port 80 with args -a 0.0.0.0/32 -b \'*\'
+BLOCK host 127.0.0.1 port 80 with args -a 255.255.255.255/32 -b \'*\'
+
+### 31bit mask
+BLOCK host 127.0.0.1 port 80 with args -a 127.0.0.2/31 -b \'*\'
+ALLOW host 127.0.0.2 port 80 with args -a 127.0.0.2/31 -b \'*\'
+ALLOW host 127.0.0.3 port 80 with args -a 127.0.0.2/31 -b \'*\'
+BLOCK host 127.0.0.4 port 80 with args -a 127.0.0.2/31 -b \'*\'
+
+### 1bit mask
+ALLOW host 1.0.0.0 port 80 with args -a 127.0.0.0/1 -b \'*\'
+ALLOW host 127.255.255.255 port 80 with args -a 127.0.0.0/1 -b \'*\'
+BLOCK host 128.0.0.1 port 80 with args -a 127.0.0.0/1 -b \'*\'
+BLOCK host 255.255.255.255 port 80 with args -a 127.0.0.0/1 -b \'*\'
+
+### 0bit mask
+ALLOW host 0.0.0.1 port 80 with args -a 127.0.0.0/0 -b \'*\'
+ALLOW host 0.0.1.0 port 80 with args -a 127.0.0.0/0 -b \'*\'
+ALLOW host 0.1.0.0 port 80 with args -a 127.0.0.0/0 -b \'*\'
+ALLOW host 1.0.0.0 port 80 with args -a 127.0.0.0/0 -b \'*\'
+ALLOW host 127.255.255.255 port 80 with args -a 127.0.0.0/0 -b \'*\'
+ALLOW host 128.0.0.1 port 80 with args -a 127.0.0.0/0 -b \'*\'
+ALLOW host 255.255.255.255 port 80 with args -a 127.0.0.0/0 -b \'*\'
+ALLOW host 127.0.0.1 port 80 with args -a 0.0.0.0/0 -b \'*\'
+ALLOW host 127.0.0.1 port 80 with args -a 255.255.255.255/0 -b \'*\'
+
+## IPv6
+
+### Standard
+ALLOW host ::1 port 80 with args -a ::1 -b \'*\'
+ALLOW host ::1 port 80 with args -a ::1/24 -b \'*\'
+ALLOW host ::1 port 80 with args -a [::1/24] -b \'*\'
+BLOCK host a::1 port 80 with args -a ::1/24 -b \'*\'
+BLOCK host ::1 port 80 with args -b ::1
+
+### With port
+ALLOW host ::1 port 80 with args -a [::1/24]:80 -b \'*\'
+BLOCK host ::1 port 80 with args -a [::1/24]:81 -b \'*\'
+BLOCK host a::1 port 80 with args -a [::1/24]:80 -b \'*\'
+BLOCK host ::1 port 80 with args -b [::1/24]:80
+ALLOW host ::1 port 21 with args -a [::1/24]:ftp -b \'*\'
+
+### Invalid syntax
+ABORT_ON host ::1 port 80 with args -a ::1/-1 -b \'*\'
+ABORT_ON host ::1 port 80 with args -a ::1/129 -b \'*\'
+ABORT_ON host ::1 port 80 with args -a ::1/a -b \'*\'
+ABORT_ON host ::1 port 80 with args -a ::1/ -b \'*\'
+ABORT_ON host ::1 port 80 with args -a ::1/24/24 -b \'*\'
+ABORT_ON host ::1 port 80 with args -a [::1]/24 -b \'*\'
+ABORT_ON host ::1 port 80 with args -a [::1/24/24] -b \'*\'
+ABORT_ON host ::1 port 80 with args -a [::1/24]:80:80 -b \'*\'
+ABORT_ON host ::1 port 80 with args -a [::1]:80/24 -b \'*\'
+ABORT_ON host ::1 port 80 with args -a [:1:/24:1] -b \'*\'
+ABORT_ON host ::1 port 80 with args -a /24[::1] -b \'*\'
+
+### 128bit mask
+ALLOW host ::1 port 80 with args -a ::1/128 -b \'*\'
+BLOCK host ::2 port 80 with args -a ::1/128 -b \'*\'
+BLOCK host ::1 port 80 with args -a ::0/128 -b \'*\'
+BLOCK host ::1 port 80 with args -a 2001:db8:0:1:1:1:1:1/128 -b \'*\'
+ALLOW host 2001:db8:0:1:1:1:1:1 port 80 with args -a 2001:db8:0:1:1:1:1:1/128 -b \'*\'
+
+### 127bit mask
+BLOCK host ::1 port 80 with args -a ::2/127 -b \'*\'
+ALLOW host ::2 port 80 with args -a ::2/127 -b \'*\'
+ALLOW host ::3 port 80 with args -a ::2/127 -b \'*\'
+BLOCK host ::4 port 80 with args -a ::2/127 -b \'*\'
+
+### 1bit mask
+BLOCK host ::0 port 80 with args -a 8000::/1 -b \'*\'
+BLOCK host 7fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff port 80 with args -a 8000::/1 -b \'*\'
+ALLOW host 8000:: port 80 with args -a 8000::/1 -b \'*\'
+ALLOW host ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff port 80 with args -a 8000::/1 -b \'*\'
+
+### 0bit mask
+ALLOW host 2001:db8:0:1:1:1:1:1 port 80 with args -a 8000::/0 -b \'*\'
+ALLOW host ::0 port 80 with args -a 8000::/0 -b \'*\'
+ALLOW host ::1 port 80 with args -a 8000::/0 -b \'*\'
+ALLOW host ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff port 80 with args -a 8000::/0 -b \'*\'
+ALLOW host ::1 port 80 with args -a ::0/0 -b \'*\'
+ALLOW host ::1 port 80 with args -a ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/0 -b \'*\'
+
+## Rule IP is IPv4 mapping
+
+### With port
+ALLOW host 127.1.1.1 port 80 with args -a [::ffff:7f01:101/128]:80 -b \'*\'
+BLOCK host 127.1.1.1 port 80 with args -a [::ffff:7f01:101/128]:81 -b \'*\'
+
+### 128bit mask
+ALLOW host 127.1.1.1 port 80 with args -a ::ffff:7f01:101/128 -b \'*\'
+BLOCK host 127.1.1.2 port 80 with args -a ::ffff:7f01:101/128 -b \'*\'
+BLOCK host 128.1.1.1 port 80 with args -a ::ffff:7f01:101/128 -b \'*\'
+
+### 127bit mask
+BLOCK host 127.0.0.1 port 80 with args -a ::ffff:7f00:2/127 -b \'*\'
+ALLOW host 127.0.0.2 port 80 with args -a ::ffff:7f00:2/127 -b \'*\'
+ALLOW host 127.0.0.3 port 80 with args -a ::ffff:7f00:2/127 -b \'*\'
+BLOCK host 127.0.0.4 port 80 with args -a ::ffff:7f00:2/127 -b \'*\'
+
+### 97bit mask
+ALLOW host 1.0.0.0 port 80 with args -a ::ffff:7f01:101/97 -b \'*\'
+ALLOW host 127.255.255.255 port 80 with args -a ::ffff:7f01:101/97 -b \'*\'
+BLOCK host 128.0.0.0 port 80 with args -a ::ffff:7f01:101/97 -b \'*\'
+
+### 96bit mask
+ALLOW host 127.0.0.1 port 80 with args -a ::ffff:7f01:101/96 -b \'*\'
+ALLOW host 128.1.1.2 port 80 with args -a ::ffff:7f01:101/96 -b \'*\'
+
+### These are not treated as ipv4 mapped address because the rule side is masked.
+BLOCK host 127.0.0.1 port 80 with args -a ::ffff:7f00:1/0 -b \'*\'
+BLOCK host 127.0.0.1 port 80 with args -a ::ffff:7f00:1/95 -b \'*\'
+
+## Connect IP is IPv4 mapping
+
+### With port
+ALLOW host ::ffff:7f01:101 port 80 with args -a 127.1.1.1/32:80 -b \'*\'
+BLOCK host ::ffff:7f01:101 port 80 with args -a 127.1.1.1/32:81 -b \'*\'
+
+### 32bit mask
+ALLOW host ::ffff:7f01:101 port 80 with args -a 127.1.1.1/32 -b \'*\'
+BLOCK host ::ffff:7f01:101 port 80 with args -a 127.1.1.2/32 -b \'*\'
+BLOCK host ::ffff:7f01:101 port 80 with args -a 128.1.1.1/32 -b \'*\'
+BLOCK host ::ffff:7f01:102 port 80 with args -a 127.1.1.1/32 -b \'*\'
+
+### 31bit mask
+BLOCK host ::ffff:7f01:102 port 80 with args -a 127.1.1.1/31 -b \'*\'
+ALLOW host ::ffff:7f01:102 port 80 with args -a 127.1.1.2/31 -b \'*\'
+ALLOW host ::ffff:7f01:102 port 80 with args -a 127.1.1.3/31 -b \'*\'
+BLOCK host ::ffff:7f01:102 port 80 with args -a 127.1.1.4/31 -b \'*\'
+
+### 1bit mask
+ALLOW host ::ffff:7f01:101 port 80 with args -a 127.1.1.1/1 -b \'*\'
+ALLOW host ::ffff:7f01:101 port 80 with args -a 127.1.1.2/1 -b \'*\'
+ALLOW host ::ffff:7f01:101 port 80 with args -a 127.1.2.1/1 -b \'*\'
+ALLOW host ::ffff:7f01:101 port 80 with args -a 127.2.1.1/1 -b \'*\'
+BLOCK host ::ffff:7f01:101 port 80 with args -a 128.1.1.1/1 -b \'*\'
+
+### 0bit mask
+ALLOW host ::ffff:101:101 port 80 with args -a 127.1.1.1/0 -b \'*\'
+ALLOW host ::ffff:ffff:ffff port 80 with args -a 127.1.1.1/0 -b \'*\'
+
+## hostname
+
+### Invalid syntax
+ABORT_ON host localhost port 80 with args -a localhost/24 -b \'*\'
+
 
 if test $ecount -gt 0; then
     _die "$ecount test(s) failed!"
