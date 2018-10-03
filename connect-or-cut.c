@@ -351,7 +351,8 @@ mask_ipv6 (struct in6_addr *addr, const struct in6_addr *netmask)
   uint32_t *_addr = (uint32_t *) addr;
   const uint32_t *_netmask = (uint32_t *) netmask;
 
-  for (int i = 0; i < 4; i++)
+  int i;
+  for (i = 0; i < 4; i++)
     {
       _addr[i] &= _netmask[i];
     }
