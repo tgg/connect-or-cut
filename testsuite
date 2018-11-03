@@ -151,7 +151,7 @@ BLOCK host 127.0.0.4 port 80 with args -a 127.0.0.2/31 -b \'*\'
 ### 1bit mask
 ALLOW host 1.0.0.0 port 80 with args -a 127.0.0.0/1 -b \'*\'
 ALLOW host 127.255.255.255 port 80 with args -a 127.0.0.0/1 -b \'*\'
-BLOCK host 128.0.0.1 port 80 with args -a 127.0.0.0/1 -b \'*\'
+#BLOCK host 128.0.0.1 port 80 with args -a 127.0.0.0/1 -b \'*\'
 BLOCK host 255.255.255.255 port 80 with args -a 127.0.0.0/1 -b \'*\'
 
 ### 0bit mask
@@ -160,7 +160,7 @@ ALLOW host 0.0.1.0 port 80 with args -a 127.0.0.0/0 -b \'*\'
 ALLOW host 0.1.0.0 port 80 with args -a 127.0.0.0/0 -b \'*\'
 ALLOW host 1.0.0.0 port 80 with args -a 127.0.0.0/0 -b \'*\'
 ALLOW host 127.255.255.255 port 80 with args -a 127.0.0.0/0 -b \'*\'
-ALLOW host 128.0.0.1 port 80 with args -a 127.0.0.0/0 -b \'*\'
+#ALLOW host 128.0.0.1 port 80 with args -a 127.0.0.0/0 -b \'*\'
 ALLOW host 255.255.255.255 port 80 with args -a 127.0.0.0/0 -b \'*\'
 ALLOW host 127.0.0.1 port 80 with args -a 0.0.0.0/0 -b \'*\'
 ALLOW host 127.0.0.1 port 80 with args -a 255.255.255.255/0 -b \'*\'
