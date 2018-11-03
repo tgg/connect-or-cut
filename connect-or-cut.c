@@ -175,10 +175,15 @@ typedef struct coc_entry {
     struct in6_addr ipv6;
     char *glob;
   } addr;
+  union {
+    struct in_addr ipv4;
+    struct in6_addr ipv6;
+  } netmask;
   in_port_t port;
   coc_address_type_t addr_type;
   coc_rule_type_t rule_type;
   SLIST_ENTRY(coc_entry) entries;
+  bool is_subnet;
 } coc_entry_t;
 
 static inline
@@ -333,12 +338,62 @@ strndup (const char *s, size_t n)
 }
 #endif
 
+
+static inline void
+mask_ipv4 (struct in_addr *addr, const struct in_addr *netmask)
+{
+  addr->s_addr &= netmask->s_addr;
+}
+
+static inline void
+mask_ipv6 (struct in6_addr *addr, const struct in6_addr *netmask)
+{
+  uint32_t *_addr = (uint32_t *) addr;
+  const uint32_t *_netmask = (uint32_t *) netmask;
+
+  int i;
+  for (i = 0; i < 4; i++)
+    {
+      _addr[i] &= _netmask[i];
+    }
+}
+
+static void
+make_ipv4_netmask (struct in_addr *netmask, uint8_t cidr_prefix_length)
+{
+  memset (netmask, 0, sizeof(struct in_addr));
+
+  if (cidr_prefix_length > 0)
+    {
+      netmask->s_addr = htonl (0xFFFFFFFFu << (32u - cidr_prefix_length));
+    }
+}
+
+static void
+make_ipv6_netmask (struct in6_addr *netmask, uint8_t cidr_prefix_length)
+{
+  memset (netmask, 0, sizeof(struct in6_addr));
+
+  uint8_t *p_netmask = netmask->s6_addr;
+  while (8 < cidr_prefix_length)
+    {
+      *p_netmask = 0xFFu;
+      p_netmask++;
+      cidr_prefix_length -= 8;
+    }
+  if (cidr_prefix_length > 0)
+    {
+      *p_netmask = (0xFFu << (8u - cidr_prefix_length));
+    }
+}
+
 static int
-coc_rule_add (const char *str, size_t len, size_t rule_type)
+coc_rule_add (const char * const str, const size_t len, const size_t rule_type)
 {
   int type = COC_IPV4_ADDR | COC_IPV6_ADDR | COC_GLOB_ADDR | COC_HOST_ADDR;
   const char *p = str;
   const char *service = NULL;
+  const char *cidr_prefix_length_start = NULL;
   enum
   {
     IPV6_SB_NONE,
@@ -471,7 +526,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 
       else if (isdigit (c))
 	{
-	  if ((type & COC_IPV4_ADDR) == COC_IPV4_ADDR)
+	  if ((type & COC_IPV4_ADDR) == COC_IPV4_ADDR && cidr_prefix_length_start == NULL)
 	    {
 	      /* INT30-C */
 	      if ((segment > UINT16_MAX / 10) ||
@@ -534,6 +589,19 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	  else
 	    {
 	      type &= ~(COC_IPV4_ADDR | COC_IPV6_ADDR);
+	    }
+	}
+
+      else if (c == '/')
+	{
+	  if (!(type & (COC_IPV4_ADDR | COC_IPV6_ADDR)) || cidr_prefix_length_start != NULL)
+	    {
+	      DIE ("`%c' unexpected, aborting\n", c);
+	    }
+	  else
+	    {
+	      cidr_prefix_length_start = p + 1;
+	      type &= (COC_IPV4_ADDR | COC_IPV6_ADDR);
 	    }
 	}
 
@@ -634,17 +702,68 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	}
     }
 
-  char *host = NULL;
-  size_t skip_last = 1;
-
-  if (sb == IPV6_SB_CLOSE)
+  uint8_t cidr_prefix_length = 0;
+  if (cidr_prefix_length_start != NULL)
     {
-      str++;
-      len--;
-      skip_last = 2;
+      const char *p_end = str + len;
+
+      if (service != NULL)
+	{
+	  p_end = service - 1;
+	}
+      if (sb == IPV6_SB_CLOSE)
+	{
+	  p_end--;
+	}
+
+      if (p_end - cidr_prefix_length_start <= 0)
+	{
+	  DIE ("No CIDR prefix length specified after `/', aborting\n");
+	}
+      else if (p_end - cidr_prefix_length_start > 3)
+	{
+	  DIE ("Too long CIDR prefix length, aborting\n");
+	}
+
+      const char *t;
+      for (t = cidr_prefix_length_start; t < p_end; t++)
+	{
+	  unsigned char u = *t;
+
+	  if (!isdigit (u))
+	    {
+	      DIE ("`%c' unexpected for CIDR prefix length, aborting\n", u);
+	    }
+
+	  cidr_prefix_length = cidr_prefix_length * 10 + (u - '0');
+	}
+
+      if ((type == COC_IPV4_ADDR && cidr_prefix_length > 32) ||
+	  (type == COC_IPV6_ADDR && cidr_prefix_length > 128))
+	{
+	  DIE ("`%u' not allowed for CIDR prefix length, aborting\n", cidr_prefix_length);
+	}
     }
 
-  host = strndup (str, service ? service - str - skip_last : len);
+  const char *host_start = str;
+  const char *host_end = host_start + len;
+
+  if (service != NULL)
+    {
+      host_end = service - 1;
+    }
+  if (sb == IPV6_SB_CLOSE)
+    {
+      host_start++;
+      host_end--;
+    }
+  if (cidr_prefix_length_start != NULL)
+    {
+      host_end = cidr_prefix_length_start - 1;
+    }
+
+  size_t host_len = host_end - host_start;
+  char *host = strndup (host_start, host_len);
 
   coc_log (COC_DEBUG_LOG_LEVEL,
 	   "DEBUG Adding %s rule for %s connection to %s:%hu\n",
@@ -658,10 +777,17 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	e->rule_type = rule_type;
 	e->addr_type = COC_IPV6_ADDR;
 	e->port = htons (port);
+	e->is_subnet = cidr_prefix_length_start != NULL;
 
 	if (inet_pton (AF_INET6, host, &e->addr.ipv6) != 1)
 	  {
 	    DIE ("Invalid IPv6 address: `%s', aborting\n", host);
+	  }
+
+	if (e->is_subnet)
+	  {
+	    make_ipv6_netmask (&e->netmask.ipv6, cidr_prefix_length);
+	    mask_ipv6 (&e->addr.ipv6, &e->netmask.ipv6);
 	  }
 
 	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
@@ -675,10 +801,17 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	e->rule_type = rule_type;
 	e->addr_type = COC_IPV4_ADDR;
 	e->port = htons (port);
+	e->is_subnet = cidr_prefix_length_start != NULL;
 
 	if (inet_pton (AF_INET, host, &e->addr.ipv4) != 1)
 	  {
 	    DIE ("Invalid IPv4 address: `%s', aborting\n", host);
+	  }
+
+	if (e->is_subnet)
+	  {
+	    make_ipv4_netmask (&e->netmask.ipv4, cidr_prefix_length);
+	    mask_ipv4 (&e->addr.ipv4, &e->netmask.ipv4);
 	  }
 
 	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
@@ -692,6 +825,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 	e->rule_type = rule_type;
 	e->addr_type = COC_GLOB_ADDR;
 	e->port = htons (port);
+	e->is_subnet = false;
 	/* Here we transfer ownership of `host' to the entry. */
 	e->addr.glob = host;
 	SLIST_INSERT_HEAD (&coc_list_head, e, entries);
@@ -731,6 +865,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		e->rule_type = rule_type;
 		e->addr_type = COC_IPV4_ADDR;
 		e->port = htons (port);
+		e->is_subnet = false;
 		e->addr.ipv4 = sa->sin_addr;
 		SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	      }
@@ -743,6 +878,7 @@ coc_rule_add (const char *str, size_t len, size_t rule_type)
 		e->rule_type = rule_type;
 		e->addr_type = COC_IPV6_ADDR;
 		e->port = htons (port);
+		e->is_subnet = false;
 		e->addr.ipv6 = sa->sin6_addr;
 		SLIST_INSERT_HEAD (&coc_list_head, e, entries);
 	      }
@@ -1244,6 +1380,36 @@ coc_init (void)
 
 static inline
 bool
+coc_rule_match_ipv4 (const struct in_addr *rule_addr, in_port_t rule_port, const struct in_addr *addr, in_port_t port, bool rule_is_subnet, const struct in_addr *netmask)
+{
+  struct in_addr masked_addr;
+  if (rule_is_subnet)
+    {
+      masked_addr = *addr;
+      mask_ipv4 (&masked_addr, netmask);
+      addr = &masked_addr;
+    }
+  return (rule_addr->s_addr == addr->s_addr &&
+	  (!rule_port || rule_port == port));
+}
+
+static inline
+bool
+coc_rule_match_ipv6 (const struct in6_addr *rule_addr, in_port_t rule_port, const struct in6_addr *addr, in_port_t port, bool rule_is_subnet, const struct in6_addr *netmask)
+{
+  struct in6_addr masked_addr;
+  if (rule_is_subnet)
+    {
+      masked_addr = *addr;
+      mask_ipv6 (&masked_addr, netmask);
+      addr = &masked_addr;
+    }
+  return (IN6_ARE_ADDR_EQUAL (rule_addr, addr) &&
+	  (!rule_port || rule_port == port));
+}
+
+static inline
+bool
 coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
 {
   switch (e->addr_type)
@@ -1251,15 +1417,25 @@ coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
     case COC_IPV6_ADDR:
       if (addr->sa_family == AF_INET6)
 	{
-	  return (IN6_ARE_ADDR_EQUAL (&e->addr.ipv6, INET6_ADDR (addr)) &&
-		  (!e->port || e->port == INET6_PORT (addr)));
+	  return coc_rule_match_ipv6 (
+		  &e->addr.ipv6,
+		  e->port,
+		  INET6_ADDR (addr),
+		  INET6_PORT (addr),
+		  e->is_subnet,
+		  &e->netmask.ipv6);
 	}
       else if (addr->sa_family == AF_INET)
 	{
 	  if (IN6_IS_ADDR_V4MAPPED (&e->addr.ipv6))
 	    {
-	      return (INET4_IN_6 (&e->addr.ipv6)->s_addr == INET4_ADDR (addr)->s_addr &&
-		      (!e->port || e->port == INET4_PORT (addr)));
+	      return coc_rule_match_ipv4 (
+		      INET4_IN_6 (&e->addr.ipv6),
+		      e->port,
+		      INET4_ADDR (addr),
+		      INET4_PORT (addr),
+		      e->is_subnet,
+		      INET4_IN_6 (&e->netmask.ipv6));
 	    }
 	}
       break;
@@ -1267,15 +1443,25 @@ coc_rule_match (coc_entry_t *e, const struct sockaddr *addr, const char *buf)
     case COC_IPV4_ADDR:
       if (addr->sa_family == AF_INET)
 	{
-	  return (e->addr.ipv4.s_addr == INET4_ADDR (addr)->s_addr &&
-		  (!e->port || e->port == INET4_PORT (addr)));
+	  return coc_rule_match_ipv4 (
+		  &e->addr.ipv4,
+		  e->port,
+		  INET4_ADDR (addr),
+		  INET4_PORT (addr),
+		  e->is_subnet,
+		  &e->netmask.ipv4);
 	}
       else if (addr->sa_family == AF_INET6)
 	{
 	  if (IN6_IS_ADDR_V4MAPPED (INET6_ADDR (addr)))
 	    {
-	      return (e->addr.ipv4.s_addr == INET4_IN_6 (INET6_ADDR (addr))->s_addr &&
-		      (!e->port || e->port == INET6_PORT (addr)));
+	      return coc_rule_match_ipv4 (
+		      &e->addr.ipv4,
+		      e->port,
+		      INET4_IN_6 (INET6_ADDR (addr)),
+		      INET6_PORT (addr),
+		      e->is_subnet,
+		      &e->netmask.ipv4);
 	    }
 	}
       break;
