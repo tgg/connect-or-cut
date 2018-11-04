@@ -5,13 +5,18 @@ coc configures connect-or-cut for the specified program.
 .DESCRIPTION
 coc helper script sets environment variables then invokes coc.exe on the
 specified program. If no program is specified it outputs environment
-variables that need to be set to replicate the requested configuration.
+variables that need to be set to replicate the requested rules.
+
+Whenever a TCP connection is requested, the address where to connect
+is checked against the list of allowed hosts. If it's in it, the connection
+is allowed. If not, the list of blocked hosts is checked. If it's in it,
+the connection is rejected. If not, the connection is allowed.
 
 .PARAMETER AllowDNS
-Allow connections to DNS nameservers
+Allow connections to DNS nameservers.
 
 .PARAMETER Allow
-List of allowed host. Can be specified as host, host:port or as a glob like
+List of allowed hosts. Can be specified as host, host:port or as a glob like
 "*.google.com". Specifying "*" allows every connection.
 
 .PARAMETER Block
@@ -19,7 +24,27 @@ List of blocked hosts. Can be specified as host, host:port or as a glob like
 "*.google.com". Specifying "*" can block every connection.
 
 .PARAMETER Help
-Shows this help message
+Shows this help message.
+
+.PARAMETER LogTarget
+The location where to write logs. Valid values are: "stderr", which is the
+default; "syslog"; and "file". Multiple values can be specified.
+
+.PARAMETER LogPath
+The path where to store logs when logging to files.
+
+.PARAMETER LogLevel
+What to log. Can be one of: "silent" to discard logging, "error" to log
+only errors, "block" to also log blocked connections,"allow" to also
+log allowed connections, and "debug" to add debugging information. Default
+value is "block".
+
+.PARAMETER Version
+Shows the version of connect-or-cut library.
+
+.PARAMETER ProgramAndParams
+The program (and its arguments) to launch with the specified rules.
+If not specified, the cmd instructions to replicate these rules are displayed.
 
 #>
 [CmdletBinding()]
@@ -35,7 +60,7 @@ param (
 [string]$LogLevel = "block",
 [switch]$Version,
 [Parameter(ValueFromRemainingArguments=$true)]
-[string[]]$ProgramAndParams
+[string]$ProgramAndParams
 )
 
 function Split-String([string]$s)
@@ -68,6 +93,7 @@ if ($Help -eq $True)
 elseif ($Version -eq $True)
 {
     $lib = Join-Path -Path $scriptPath -ChildPath "connect-or-cut.dll"
+
     try
     {
         Write-Output "$((Get-Item $lib -ErrorAction Stop).VersionInfo.FileVersion)"
@@ -89,4 +115,7 @@ Append-ProcessEnvironment -name "COC_BLOCK" -values $Block
 Write-Verbose "COC_ALLOW is now: $env:COC_ALLOW"
 Write-Verbose "COC_BLOCK is now: $env:COC_BLOCK"
 
+$env:COC_LOG_LEVEL="$LogLevels[$LogLevel]"
+if ($LogPath) { $env:COC_LOG_PATH="$LogPath" }
 
+Write-Verbose "program and params: $ProgramAndParams"

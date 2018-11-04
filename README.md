@@ -1,6 +1,6 @@
-# connect-or-cut [![Build Status](https://travis-ci.org/tgg/connect-or-cut.svg)](https://travis-ci.org/tgg/connect-or-cut)[![AppVeyor Status](https://ci.appveyor.com/api/projects/status/github/tgg/connect-or-cut?branch=master&svg=true)](https://ci.appveyor.com/project/teejeejee/connect-or-cut)
+# connect-or-cut [![Build Status](https://travis-ci.org/tgg/connect-or-cut.svg)](https://travis-ci.org/tgg/connect-or-cut) [![AppVeyor Status](https://ci.appveyor.com/api/projects/status/github/tgg/connect-or-cut?svg=true)](https://ci.appveyor.com/project/teejeejee/connect-or-cut)
 
-Stateless LD_PRELOAD based poor man's firewall.
+Simple network sandbox for Unix and Windows.
 
 ## Demo
 
@@ -8,17 +8,18 @@ Stateless LD_PRELOAD based poor man's firewall.
 
 ## What it is
 
-connect-or-cut is a small library to interpose with LD_PRELOAD to a
-program to prevent it from connecting where it should not.
+connect-or-cut is a small library to inject into a program to prevent
+it from connecting where it should not.
 
 This is similar to a firewall, except that:
 
- * you do not need to be root to use it
- * only processes launched after `LD_PRELOAD` is set are affected, not
+ * you do not need specific privileges to use it
+ * only injected process and its sub-processes are affected, not
    the full system
 
 ## Installation
 
+### Unix
 Provided you have a C compiler, GNU or BSD make on a Unix box:
 
     $ git clone https://github.com/tgg/connect-or-cut.git
@@ -35,16 +36,21 @@ If you want to compile it with debug information:
 
     $ CFLAGS=-g make os=$(uname -s)
 
+### Windows
+
+Download binaries or compile using Visual Studio 2015.
+
 
 ## Using it
+### Unix
 
-    $ ./coc -d -a '*.google.com' -a '*.1e100.net' -b '*' iceweasel
+    $ ./coc -d -a '*.google.com' -a '*.1e100.net' -b '*' firefox
 
 Or to do it manually:
 
-    $ LD_PRELOAD=./libconnect-or-cut.so COC_ALLOW='212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net' COC_BLOCK='*' iceweasel
+    $ LD_PRELOAD=./libconnect-or-cut.so COC_ALLOW='212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net' COC_BLOCK='*' firefox
 
-This invokes iceweasel, allowing only outgoing connection to my ISP
+This invokes firefox, allowing only outgoing connection to my ISP
 provided name servers, to all google.com and 1e100.net addresses.
 
 Everything else will be blocked, with connection blocking messages
@@ -85,6 +91,10 @@ displayed on stderr.
      -v, --version                     	Print connect-or-cut version.
 
 
+### Windows
+
+TO WRITE
+
 ## Use cases
 
 You can use connect-or-cut to:
@@ -117,6 +127,7 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    * NetBSD 7 with gcc
    * Solaris 10
    * macOS 10.4
+   * Windows 10 with Visual Studio 2015
 
    Portability patches welcome!
 
@@ -130,7 +141,13 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    - getnameinfo does not provide access to aliases
    - gethostbyaddr/gethostent, which do, are not reentrant on all platforms
 
+ * On Windows, injection into UWP processes does not work. This means
+   connect-or-cut cannot (yet?) work with Edge browser.
+
 ## News
+ * Version 1.0.4
+   * First version for Windows
+
  * Version 1.0.3 (2017-03-21)
    * Fix testsuite on SunOS
    * Fix RPM compilation in 32 bits
@@ -155,7 +172,6 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 ## Roadmap
 
  * WARN if localhost is not allowed
- * Port on Windows
  * Make filtering algorithm configurable. For now it's always:
    * check against ALLOW list and ALLOW connection if it's in it;
    * else check against BLOCK list and BLOCK connection if it's in it;
