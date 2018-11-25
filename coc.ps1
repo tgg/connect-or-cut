@@ -47,20 +47,36 @@ The program (and its arguments) to launch with the specified rules.
 If not specified, the cmd instructions to replicate these rules are displayed.
 
 #>
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding=$false)]
 param (
-[boolean]$AllowDNS = $false,
-[string[]]$Allow = @(),
-[string[]]$Block = @(),
-[switch]$Help,
-[ValidateSet("stderr","syslog","file")]
-[string[]]$LogTarget = @("stderr"),
-[string]$LogPath,
-[ValidateSet("silent","error","block","allow","debug")]
-[string]$LogLevel = "block",
-[switch]$Version,
-[Parameter(ValueFromRemainingArguments=$true)]
-[string]$ProgramAndParams
+	[switch]
+	$AllowDNS = $false,
+
+	[string[]]
+	$Allow = @(),
+
+	[string[]]
+	$Block = @(),
+
+	[switch]
+	$Help,
+
+	[ValidateSet("stderr","syslog","file")]
+	[string[]]
+	$LogTarget = @("stderr"),
+
+	[string]
+	$LogPath,
+
+	[ValidateSet("silent","error","block","allow","debug")]
+	[string]
+	$LogLevel = "block",
+
+	[switch]
+	$Version,
+
+	[Parameter(ValueFromRemainingArguments=$true)]
+	[string[]]$ProgramAndParams
 )
 
 function Split-String([string]$s)
@@ -81,22 +97,29 @@ function Append-ProcessEnvironment([string]$name, [string[]]$values)
     [Environment]::SetEnvironmentVariable($name, (Join-String($current + $values)), "Process")
 }
 
+function Get-DnsServers()
+{
+	# This is not the right thing to do because it limits to IPv4.
+	# Patches welcome!
+	(Get-DnsClientServerAddress -AddressFamily IPv4 | where { $_.ServerAddresses.count -gt 0 }).ServerAddresses
+}
+
 $scriptPath = Split-Path -parent $MyInvocation.MyCommand.Definition
 $LogTargets = @{"stderr" = 1; "syslog" = 2; "file" = 3}
 $LogLevels = @{"silent" = 0; "error" = 1; "block" = 2; "allow" = 3; "debug" = 4}
 
-if ($Help -eq $True)
+if ($Help -eq $true)
 {
     help $MyInvocation.MyCommand.Definition -Detailed
     exit 0
 }
-elseif ($Version -eq $True)
+elseif ($Version -eq $true)
 {
     $lib = Join-Path -Path $scriptPath -ChildPath "connect-or-cut.dll"
 
     try
     {
-        Write-Output "$((Get-Item $lib -ErrorAction Stop).VersionInfo.FileVersion)"
+        Write-Output "connect-or-cut $((Get-Item $lib -ErrorAction Stop).VersionInfo.FileVersion)"
         exit 0
     }
     catch [System.Management.Automation.ItemNotFoundException]
@@ -106,16 +129,27 @@ elseif ($Version -eq $True)
     }
 }
 
-Write-Verbose "COC_ALLOW was: $env:COC_ALLOW"
-Write-Verbose "COC_BLOCK was: $env:COC_BLOCK"
-
 Append-ProcessEnvironment -name "COC_ALLOW" -values $Allow
 Append-ProcessEnvironment -name "COC_BLOCK" -values $Block
 
 Write-Verbose "COC_ALLOW is now: $env:COC_ALLOW"
 Write-Verbose "COC_BLOCK is now: $env:COC_BLOCK"
 
-$env:COC_LOG_LEVEL="$LogLevels[$LogLevel]"
+$env:COC_LOG_LEVEL=$LogLevels[$LogLevel]
 if ($LogPath) { $env:COC_LOG_PATH="$LogPath" }
 
+if ($LogTarget) {
+	$acc = 0
+
+	foreach ($target in $LogTarget) {
+		$acc = $acc -bor $LogTargets[$target]
+	}
+
+	$env:COC_LOG_TARGET="$acc"
+}
+
+# TODO add DNS servers if requested
+
+$exe = Join-Path -Path $scriptPath -ChildPath "coc.exe"
 Write-Verbose "program and params: $ProgramAndParams"
+Start-Process $exe $ProgramAndParams
