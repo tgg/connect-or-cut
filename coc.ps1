@@ -79,26 +79,35 @@ param (
 	[string[]]$ProgramAndParams
 )
 
-function Split-String([string]$s)
-{
+function Split-String([string]$s) {
     if ($s -eq $null) { @() }
     else { ,$s.Split(";") } # , prevents automatic conversion string[1] => string
 }
 
-function Join-String([string[]]$a)
-{
+function Join-String([string[]]$a) {
     if ($a.Count -eq 0) { $null }
     else { [string]::Join(";", $a) }
 }
 
-function Append-ProcessEnvironment([string]$name, [string[]]$values)
-{
+function Append-ProcessEnvironment([string]$name, [string[]]$values) {
     $current = Split-String([Environment]::GetEnvironmentVariable($name, "Process"))
-    [Environment]::SetEnvironmentVariable($name, (Join-String($current + $values)), "Process")
+
+	# De-duplication and removal of empty vars happens here
+	$set = New-Object System.Collections.Generic.HashSet[string]
+	foreach ($v in $current) {
+		if ($v) { [void]$set.Add($v) }
+	}
+	foreach ($v in $values) {
+		if ($v) { [void]$set.Add($v) }
+	}
+
+	$current = New-Object 'string[]' $set.Count
+	$set.CopyTo($current)
+
+    [Environment]::SetEnvironmentVariable($name, (Join-String($current)), "Process")
 }
 
-function Get-DnsServers()
-{
+function Get-DnsServers() {
 	# This is not the right thing to do because it limits to IPv4.
 	# Patches welcome!
 	(Get-DnsClientServerAddress -AddressFamily IPv4 | where { $_.ServerAddresses.count -gt 0 }).ServerAddresses
@@ -108,32 +117,34 @@ $scriptPath = Split-Path -parent $MyInvocation.MyCommand.Definition
 $LogTargets = @{"stderr" = 1; "syslog" = 2; "file" = 3}
 $LogLevels = @{"silent" = 0; "error" = 1; "block" = 2; "allow" = 3; "debug" = 4}
 
-if ($Help -eq $true)
-{
+if ($Help -eq $true) {
     help $MyInvocation.MyCommand.Definition -Detailed
     exit 0
-}
-elseif ($Version -eq $true)
-{
+
+} elseif ($Version -eq $true) {
     $lib = Join-Path -Path $scriptPath -ChildPath "connect-or-cut.dll"
 
-    try
-    {
+    try {
         Write-Output "connect-or-cut $((Get-Item $lib -ErrorAction Stop).VersionInfo.FileVersion)"
         exit 0
-    }
-    catch [System.Management.Automation.ItemNotFoundException]
-    {
-        Write-Output "Cannot find connect-or-cut.dll in $scriptPath; aborting" 
+
+    } catch [System.Management.Automation.ItemNotFoundException] {
+        Write-Error "Cannot find connect-or-cut.dll in $scriptPath!" 
         exit 1
     }
+}
+
+if ($AllowDNS) {
+	Get-DnsServers | ForEach-Object { 
+		Append-ProcessEnvironment -name "COC_ALLOW" -values "${_}:53"
+	}
 }
 
 Append-ProcessEnvironment -name "COC_ALLOW" -values $Allow
 Append-ProcessEnvironment -name "COC_BLOCK" -values $Block
 
-Write-Verbose "COC_ALLOW is now: $env:COC_ALLOW"
-Write-Verbose "COC_BLOCK is now: $env:COC_BLOCK"
+Write-Verbose "COC_ALLOW is: $env:COC_ALLOW"
+Write-Verbose "COC_BLOCK is: $env:COC_BLOCK"
 
 $env:COC_LOG_LEVEL=$LogLevels[$LogLevel]
 if ($LogPath) { $env:COC_LOG_PATH="$LogPath" }
@@ -148,8 +159,23 @@ if ($LogTarget) {
 	$env:COC_LOG_TARGET="$acc"
 }
 
-# TODO add DNS servers if requested
+if ($ProgramAndParams) {
+	$exe = Join-Path -Path $scriptPath -ChildPath "coc.exe"
+	Write-Verbose "Starting: $ProgramAndParams"
+	Start-Process $exe $ProgramAndParams
 
-$exe = Join-Path -Path $scriptPath -ChildPath "coc.exe"
-Write-Verbose "program and params: $ProgramAndParams"
-Start-Process $exe $ProgramAndParams
+} else {
+	# If no program was specified but we have COC_ variables set we print them.
+	if ($env:COC_ALLOW -or $env:COC_BLOCK) {
+		foreach ($e in @("COC_ALLOW","COC_BLOCK","COC_LOG_TARGET","COC_LOG_LEVEL","COC_LOG_PATH")) {
+			$v = [Environment]::GetEnvironmentVariable($e, "Process")
+			if ($v) { Write-Host "set $e=$v" }
+		}
+		exit 0
+
+	} else {
+		Write-Error "missing command!"
+		help $MyInvocation.MyCommand.Definition
+		exit 1
+	}
+}
