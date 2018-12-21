@@ -1556,8 +1556,11 @@ HOOK(connect(SOCKET fd, const struct sockaddr *addr, socklen_t addrlen))
 		pthread_testcancel ();
 		coc_log (COC_BLOCK_LOG_LEVEL, "BLOCK connection to %s:%hu\n", str,
 			 ntohs (port));
-		// TODO WSASetLastError
+#ifdef _WIN32
+		WSASetLastError(WSAEACCES);
+#else
 		errno = EACCES;
+#endif
 		return -1;
 	      }
 	  }
