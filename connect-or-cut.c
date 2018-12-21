@@ -69,9 +69,17 @@
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "IPHLPAPI.lib")
 #ifdef _M_X64
+#ifdef _DEBUG
 #pragma comment(lib, "libMinHook-x64-v140-mtd.lib")
+#else
+#pragma comment(lib, "libMinHook-x64-v140-mt.lib")
+#endif
 #elif defined _M_IX86
+#ifdef _DEBUG
 #pragma comment(lib, "libMinHook-x86-v140-mtd.lib")
+#else
+#pragma comment(lib, "libMinHook-x86-v140-mt.lib")
+#endif
 #endif
 extern BOOL LoadCoCLibrary(HANDLE);
 #endif
