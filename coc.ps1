@@ -16,12 +16,12 @@ the connection is rejected. If not, the connection is allowed.
 Allow connections to DNS nameservers.
 
 .PARAMETER Allow
-List of allowed hosts. Can be specified as host, host:port or as a glob like
-"*.google.com". Specifying "*" allows every connection.
+List of allowed hosts. Can be specified as host, host:port, host:port/bits or
+as a glob like "*.google.com". Specifying "*" allows every connection.
 
 .PARAMETER Block
-List of blocked hosts. Can be specified as host, host:port or as a glob like
-"*.google.com". Specifying "*" can block every connection.
+List of blocked hosts. Can be specified as host, host:port, host:port/bits or
+as a glob like "*.google.com". Specifying "*" can block every connection.
 
 .PARAMETER Help
 Shows this help message.
