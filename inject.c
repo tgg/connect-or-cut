@@ -35,6 +35,7 @@
 #include <SDKDDKVer.h>
 #include <tchar.h>
 #include <Windows.h>
+#include "inject.h"
 
 #ifdef UNICODE
 #define LoadLib "LoadLibraryW"
@@ -139,7 +140,7 @@ BOOL LoadProcessLibrary(HANDLE hProcess, LPTSTR lpszLibraryPath)
 	return TRUE;
 }
 
-BOOL LoadCoCLibrary(HANDLE hProcess)
+BOOL LoadCoCLibrary(stCreateProcess *lpArgs, BOOL bResumeThread)
 {
 	TCHAR szThisPath[MAX_PATH] = { 0 };
 	TCHAR szCoCPath[MAX_PATH] = { 0 };
@@ -166,21 +167,92 @@ BOOL LoadCoCLibrary(HANDLE hProcess)
 
 	_tcsncpy(szCoCPath, szThisPath, lpszLastBackslash + 1 - szThisPath);
 
-	// Which DLL to use depends on bitnesss. Return is TRUE iif process runs in 32 bits on Windows 64.
-	BOOL isWow64 = FALSE;
-	if (!IsWow64Process(hProcess, &isWow64))
+	// If the process being launched differs in bitness from us, then rerun it with
+	// correct coc.exe (or coc32.exe)
+	BOOL isOtherWow64 = FALSE;
+	if (!IsWow64Process(lpArgs->lpProcessInformation->hProcess, &isOtherWow64))
 	{
 		return FALSE;
 	}
 
-	if (!isWow64)
+	BOOL isThisWow64 = FALSE;
+	if (!IsWow64Process(GetCurrentProcess(), &isThisWow64))
 	{
-		_tcsncat(szCoCPath, _T("connect-or-cut.dll"), 19);
+		return FALSE;
+	}
+
+	if (isOtherWow64 != isThisWow64)
+	{
+		// We won't be able to inject here. So kill this suspended process and
+		// try again with coc.exe (or coc32.exe)
+		// TODO: TerminateProcess is asynchronous; we don't wait for completion but we 
+		// probably should.
+		if (!TerminateProcess(lpArgs->lpProcessInformation->hProcess, 0))
+		{
+			return FALSE;
+		}
+
+		CloseHandle(lpArgs->lpProcessInformation->hProcess);
+		CloseHandle(lpArgs->lpProcessInformation->hThread);
+
+		TCHAR *lpCoc = isOtherWow64 ? _T("coc32.exe ") : _T("coc.exe ");
+		SIZE_T szLen = isOtherWow64 ? 10 : 8;
+
+		_tcsncat(szCoCPath, lpCoc, szLen);
+		_tcscat(szCoCPath, lpArgs->lpCommandLine);
+
+		ZeroMemory(lpArgs->lpStartupInfo, sizeof(*lpArgs->lpStartupInfo));
+		ZeroMemory(lpArgs->lpProcessInformation, sizeof(*lpArgs->lpProcessInformation));
+		// Store to restore later
+		LPTSTR lpCommandLine = lpArgs->lpCommandLine;
+		LPCTSTR lpApplicationName = lpArgs->lpApplicationName;
+		lpArgs->lpCommandLine = szCoCPath;
+		lpArgs->lpApplicationName = NULL;
+
+		if (!IndirectCreateProcess(lpArgs))
+		{
+			return FALSE;
+		}
+		else
+		{
+			lpArgs->lpCommandLine = lpCommandLine;
+			lpArgs->lpApplicationName = lpApplicationName;
+		}
 	}
 	else
 	{
-		_tcsncat(szCoCPath, _T("connect-or-cut32.dll"), 21);
+		if (!isOtherWow64)
+		{
+			_tcsncat(szCoCPath, _T("connect-or-cut.dll"), 19);
+		}
+		else
+		{
+			_tcsncat(szCoCPath, _T("connect-or-cut32.dll"), 21);
+		}
+
+		if (!LoadProcessLibrary(lpArgs->lpProcessInformation->hProcess, szCoCPath))
+		{
+			return FALSE;
+		}
+
+		if (bResumeThread && ResumeThread(lpArgs->lpProcessInformation->hThread) == -1)
+		{
+			return FALSE;
+		}
 	}
 
-	return LoadProcessLibrary(hProcess, szCoCPath);
+	return TRUE;
+}
+
+BOOL IndirectCreateProcess(stCreateProcess *lpArgs)
+{
+	if (lpArgs == NULL || lpArgs->fn == NULL)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	return (*lpArgs->fn)(lpArgs->lpApplicationName, lpArgs->lpCommandLine, lpArgs->lpProcessAttributes,
+		lpArgs->lpThreadAttributes, lpArgs->bInheritHandles, lpArgs->dwCreationFlags,
+		lpArgs->lpEnvironment, lpArgs->lpCurrentDirectory, lpArgs->lpStartupInfo, lpArgs->lpProcessInformation);
 }

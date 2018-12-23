@@ -151,6 +151,7 @@
     <ClCompile Include="inject.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inject.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="sys_queue.h" />

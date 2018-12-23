@@ -38,7 +38,8 @@
 #include <tchar.h>
 #include <Windows.h>
 
-extern BOOL LoadCoCLibrary(HANDLE);
+#include "inject.h"
+
 extern void ErrorExit(LPTSTR lpszFunction);
 
 static TCHAR* MoveBeforeFirstArgument(TCHAR *lpCommandLine)
@@ -119,8 +120,21 @@ int _tmain(int argc, _TCHAR* argv[])
 	ZeroMemory(&si, sizeof(si));
 	ZeroMemory(&pi, sizeof(pi));
 
-	// Do we really need to pass CREATE_UNICODE_ENVIRONMENT here?
-	if (!CreateProcess(NULL, lpOtherCommandLine, NULL, NULL, TRUE, CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi))
+	stCreateProcess cpArgs = {
+		.fn = CreateProcess,
+		.lpApplicationName = NULL,
+		.lpCommandLine = lpOtherCommandLine,
+		.lpProcessAttributes = NULL,
+		.lpThreadAttributes = NULL,
+		.bInheritHandles = TRUE,
+		// Do we really need to pass CREATE_UNICODE_ENVIRONMENT here?
+		.dwCreationFlags = CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
+		.lpCurrentDirectory = NULL,
+		.lpStartupInfo = &si,
+		.lpProcessInformation = &pi
+	};
+
+	if (!IndirectCreateProcess(&cpArgs))
 	{
 		ErrorExit(_T("CreateProcess"));
 	}
@@ -128,72 +142,11 @@ int _tmain(int argc, _TCHAR* argv[])
 	HeapFree(hHeap, HEAP_NO_SERIALIZE, lpThatCommandLine);
 	lpThatCommandLine = NULL;
 
-	// If the process being launched differs in bitness from us, then rerun it with
-	// correct coc.exe (or coc32.exe)
-	BOOL isOtherWow64 = FALSE;
-	if (!IsWow64Process(pi.hProcess, &isOtherWow64))
+	cpArgs.lpCommandLine = MoveBeforeFirstArgument(lpThisCommandLine) + 1;
+
+	if (!LoadCoCLibrary(&cpArgs, TRUE))
 	{
-		ErrorExit(_T("IsWow64Process"));
-	}
-
-	BOOL isThisWow64 = FALSE;
-	if (!IsWow64Process(GetCurrentProcess(), &isThisWow64))
-	{
-		ErrorExit(_T("IsWow64Process"));
-	}
-
-	if (isOtherWow64 != isThisWow64)
-	{
-		// We won't be able to inject here. So kill this suspended process and
-		// try again with coc.exe (or coc32.exe)
-		if (!TerminateProcess(pi.hProcess, 0))
-		{
-			ErrorExit(_T("TerminateProcess"));
-		}
-
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-
-		TCHAR *lpCoc = isOtherWow64 ? _T("coc32.exe") : _T("coc.exe");
-		SIZE_T szLen = isOtherWow64 ? 9 : 7;
-		TCHAR szThisPath[MAX_PATH] = { 0 };
-		TCHAR szCoCPath[MAX_PATH] = { 0 };
-
-		if (GetModuleFileName(NULL, szThisPath, MAX_PATH) == 0)
-		{
-			return FALSE;
-		}
-
-		LPTSTR lpszLastBackslash = _tcsrchr(szThisPath, _T('\\'));
-		if (lpszLastBackslash == NULL)
-		{
-			ErrorExit(_T("_tcsrchr"));
-		}
-
-		_tcsncpy(szCoCPath, szThisPath, lpszLastBackslash + 1 - szThisPath);
-		_tcsncat(szCoCPath, lpCoc, szLen);
-		_tcscat(szCoCPath, MoveBeforeFirstArgument(lpThisCommandLine));
-
-		ZeroMemory(&si, sizeof(si));
-		ZeroMemory(&pi, sizeof(pi));
-
-		if (!CreateProcess(NULL, szCoCPath, NULL, NULL, TRUE, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi))
-		{
-			ErrorExit(_T("CreateProcess"));
-		}
-
-	}
-	else
-	{
-		if (!LoadCoCLibrary(pi.hProcess))
-		{
-			ErrorExit(_T("LoadCoCLibrary"));
-		}
-
-		if (ResumeThread(pi.hThread) == -1)
-		{
-			ErrorExit(_T("ResumeThread"));
-		}
+		ErrorExit(_T("LoadCoCLibrary"));
 	}
 
 	// TODO add a flag to coc to override this

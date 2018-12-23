@@ -64,6 +64,7 @@
 #include <Shlwapi.h>
 #include <iphlpapi.h>
 #include "sys_queue.h"
+#include "inject.h"
 #include "MinHook.h"
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -81,7 +82,6 @@
 #pragma comment(lib, "libMinHook-x86-v140-mt.lib")
 #endif
 #endif
-extern BOOL LoadCoCLibrary(HANDLE);
 #endif
 
 #include <assert.h>
@@ -1123,16 +1123,7 @@ coc_version (void)
 
 int HOOK(connect(SOCKET fd, const struct sockaddr *addr, socklen_t addrlen));
 void coc_init(void);
-BOOL(WINAPI *real_CreateProcess) (LPCTSTR lpApplicationName,
-	LPTSTR lpCommandLine,
-	LPSECURITY_ATTRIBUTES lpProcessAttributes,
-	LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	BOOL bInheritHandles,
-	DWORD dwCreationFlags,
-	LPVOID lpEnvironment,
-	LPCTSTR lpCurrentDirectory,
-	LPSTARTUPINFO lpStartupInfo,
-	LPPROCESS_INFORMATION lpProcessInformation);
+pfnCreateProcess real_CreateProcess;
 BOOL HOOK(CreateProcess(
 	LPCTSTR lpApplicationName,
 	LPTSTR lpCommandLine,
@@ -1147,26 +1138,30 @@ BOOL HOOK(CreateProcess(
 {
 	// Make sure to start the process in a suspended state, then inject
 	// ourselves
-	bool resume = !(((dwCreationFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED));
+	BOOL resume = !(((dwCreationFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED));
 	dwCreationFlags |= CREATE_SUSPENDED;
-	BOOL status = real_CreateProcess(
-		lpApplicationName, lpCommandLine,
-		lpProcessAttributes, lpThreadAttributes,
-		bInheritHandles, dwCreationFlags,
-		lpEnvironment, lpCurrentDirectory,
-		lpStartupInfo, lpProcessInformation);
+	stCreateProcess cpArgs = {
+		.fn = real_CreateProcess,
+		.lpApplicationName = lpApplicationName,
+		.lpCommandLine = lpCommandLine,
+		.lpProcessAttributes = lpProcessAttributes,
+		.lpThreadAttributes = lpThreadAttributes,
+		.bInheritHandles = bInheritHandles,
+		.dwCreationFlags = dwCreationFlags,
+		.lpEnvironment = lpEnvironment,
+		.lpCurrentDirectory = lpCurrentDirectory,
+		.lpStartupInfo = lpStartupInfo,
+		.lpProcessInformation = lpProcessInformation
+	};
+
+	BOOL status = IndirectCreateProcess(&cpArgs);
 
 	if (status)
 	{
-		if (!LoadCoCLibrary(lpProcessInformation->hProcess))
+		if (!LoadCoCLibrary(&cpArgs, resume))
 		{
 			// Injection failed. Let's report it and continue.
 			coc_log(COC_ERROR_LOG_LEVEL, "Failed to inject connect-or-cut into new process: %zu", GetLastError());
-		}
-
-		if (resume)
-		{
-			ResumeThread(lpProcessInformation->hThread);
 		}
 	}
 
