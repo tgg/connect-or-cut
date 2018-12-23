@@ -129,6 +129,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		.bInheritHandles = TRUE,
 		// Do we really need to pass CREATE_UNICODE_ENVIRONMENT here?
 		.dwCreationFlags = CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
+		.lpEnvironment = NULL,
 		.lpCurrentDirectory = NULL,
 		.lpStartupInfo = &si,
 		.lpProcessInformation = &pi

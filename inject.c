@@ -201,13 +201,17 @@ BOOL LoadCoCLibrary(stCreateProcess *lpArgs, BOOL bResumeThread)
 		_tcsncat(szCoCPath, lpCoc, szLen);
 		_tcscat(szCoCPath, lpArgs->lpCommandLine);
 
-		ZeroMemory(lpArgs->lpStartupInfo, sizeof(*lpArgs->lpStartupInfo));
 		ZeroMemory(lpArgs->lpProcessInformation, sizeof(*lpArgs->lpProcessInformation));
 		// Store to restore later
 		LPTSTR lpCommandLine = lpArgs->lpCommandLine;
 		LPCTSTR lpApplicationName = lpArgs->lpApplicationName;
 		lpArgs->lpCommandLine = szCoCPath;
 		lpArgs->lpApplicationName = NULL;
+
+		if (bResumeThread)
+		{
+			lpArgs->dwCreationFlags &= ~CREATE_SUSPENDED;
+		}
 
 		if (!IndirectCreateProcess(lpArgs))
 		{
