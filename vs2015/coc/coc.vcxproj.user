@@ -9,7 +9,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>c:\Windows\system32\cmd.exe</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>C:\Users\Thoma\Source\Repos\connect-or-cut\Debug\tcpcontest.exe</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

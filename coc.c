@@ -1,6 +1,6 @@
 ﻿/* coc -- Injects connect-or-cut DLL into a new Windows process.
 *
-* Copyright Ⓒ 2017  Thomas Girard <thomas.g.girard@free.fr>
+* Copyright Ⓒ 2017, 2018  Thomas Girard <thomas.g.girard@free.fr>
 *
 * All rights reserved.
 *
@@ -128,14 +128,72 @@ int _tmain(int argc, _TCHAR* argv[])
 	HeapFree(hHeap, HEAP_NO_SERIALIZE, lpThatCommandLine);
 	lpThatCommandLine = NULL;
 
-	if (!LoadCoCLibrary(pi.hProcess))
+	// If the process being launched differs in bitness from us, then rerun it with
+	// correct coc.exe (or coc32.exe)
+	BOOL isOtherWow64 = FALSE;
+	if (!IsWow64Process(pi.hProcess, &isOtherWow64))
 	{
-		ErrorExit(_T("LoadCoCLibrary"));
+		ErrorExit(_T("IsWow64Process"));
 	}
 
-	if (ResumeThread(pi.hThread) == -1)
+	BOOL isThisWow64 = FALSE;
+	if (!IsWow64Process(GetCurrentProcess(), &isThisWow64))
 	{
-		ErrorExit(_T("ResumeThread"));
+		ErrorExit(_T("IsWow64Process"));
+	}
+
+	if (isOtherWow64 != isThisWow64)
+	{
+		// We won't be able to inject here. So kill this suspended process and
+		// try again with coc.exe (or coc32.exe)
+		if (!TerminateProcess(pi.hProcess, 0))
+		{
+			ErrorExit(_T("TerminateProcess"));
+		}
+
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+
+		TCHAR *lpCoc = isOtherWow64 ? _T("coc32.exe") : _T("coc.exe");
+		SIZE_T szLen = isOtherWow64 ? 9 : 7;
+		TCHAR szThisPath[MAX_PATH] = { 0 };
+		TCHAR szCoCPath[MAX_PATH] = { 0 };
+
+		if (GetModuleFileName(NULL, szThisPath, MAX_PATH) == 0)
+		{
+			return FALSE;
+		}
+
+		LPTSTR lpszLastBackslash = _tcsrchr(szThisPath, _T('\\'));
+		if (lpszLastBackslash == NULL)
+		{
+			ErrorExit(_T("_tcsrchr"));
+		}
+
+		_tcsncpy(szCoCPath, szThisPath, lpszLastBackslash + 1 - szThisPath);
+		_tcsncat(szCoCPath, lpCoc, szLen);
+		_tcscat(szCoCPath, MoveBeforeFirstArgument(lpThisCommandLine));
+
+		ZeroMemory(&si, sizeof(si));
+		ZeroMemory(&pi, sizeof(pi));
+
+		if (!CreateProcess(NULL, szCoCPath, NULL, NULL, TRUE, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi))
+		{
+			ErrorExit(_T("CreateProcess"));
+		}
+
+	}
+	else
+	{
+		if (!LoadCoCLibrary(pi.hProcess))
+		{
+			ErrorExit(_T("LoadCoCLibrary"));
+		}
+
+		if (ResumeThread(pi.hThread) == -1)
+		{
+			ErrorExit(_T("ResumeThread"));
+		}
 	}
 
 	// TODO add a flag to coc to override this
