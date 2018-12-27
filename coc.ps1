@@ -162,7 +162,7 @@ if ($LogTarget) {
 if ($ProgramAndParams) {
 	$exe = Join-Path -Path $scriptPath -ChildPath "coc.exe"
 	Write-Verbose "Starting: $ProgramAndParams"
-	Start-Process $exe $ProgramAndParams
+	Start-Process -FilePath $exe -Wait -NoNewWindow -ArgumentList $ProgramAndParams
 
 } else {
 	# If no program was specified but we have COC_ variables set we print them.
