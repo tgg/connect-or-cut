@@ -146,7 +146,11 @@ main (int argc, char *argv[])
 	}
       else if (rc == -1)
 	{
+#ifndef _WIN32
 	  printf ("connect to %s is KO: errno is %d (%s)\n", str, errno, strerror(errno));
+#else
+	  printf ("connect to %s is KO: errno is %d\n", str, WSAGetLastError());
+#endif
 	  close (s);
 	}
       else
