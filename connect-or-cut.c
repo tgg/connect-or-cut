@@ -1136,10 +1136,6 @@ BOOL HOOK(CreateProcess(
 	LPSTARTUPINFO lpStartupInfo,
 	LPPROCESS_INFORMATION lpProcessInformation))
 {
-	// Make sure to start the process in a suspended state, then inject
-	// ourselves
-	BOOL resume = !(((dwCreationFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED));
-	dwCreationFlags |= CREATE_SUSPENDED;
 	stCreateProcess cpArgs = {
 		.fn = real_CreateProcess,
 		.lpApplicationName = lpApplicationName,
@@ -1154,18 +1150,9 @@ BOOL HOOK(CreateProcess(
 		.lpProcessInformation = lpProcessInformation
 	};
 
-	BOOL status = IndirectCreateProcess(&cpArgs);
+	BOOL isConsole;
 
-	if (status)
-	{
-		if (!LoadCoCLibrary(&cpArgs, resume))
-		{
-			// Injection failed. Let's report it and continue.
-			coc_log(COC_ERROR_LOG_LEVEL, "Failed to inject connect-or-cut into new process: %zu", GetLastError());
-		}
-	}
-
-	return status;
+	return CreateProcessThenInject(&cpArgs, &isConsole);
 }
 
 #endif

@@ -36,6 +36,8 @@
 #include <tchar.h>
 #include <Windows.h>
 #include "inject.h"
+#include <ImageHlp.h>
+#pragma comment(lib, "Imagehlp.lib")
 
 #ifdef UNICODE
 #define LoadLib "LoadLibraryW"
@@ -43,11 +45,51 @@
 #define LoadLib "LoadLibraryA"
 #endif
 
+static BOOL CheckNtImage(PCSTR lpszLibraryPath, BOOL *is64Bit, BOOL *isConsole)
+{
+	if (!lpszLibraryPath || !is64Bit || !isConsole)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	BOOL ret = FALSE;
+	PLOADED_IMAGE pImage = ImageLoad(lpszLibraryPath, NULL);
+
+	if (pImage != NULL)
+	{
+		IMAGE_NT_HEADERS *pNtHdr = pImage->FileHeader;
+
+		if (pNtHdr->Signature == IMAGE_NT_SIGNATURE)
+		{
+			ret = TRUE;
+
+			if (pNtHdr->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+				*is64Bit = FALSE;
+			else if (pNtHdr->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+				*is64Bit = TRUE;
+			else // unsupported
+				ret = FALSE;
+
+			if (pNtHdr->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI)
+				*isConsole = TRUE;
+			else if (pNtHdr->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_GUI)
+				*isConsole = FALSE;
+			else // unknown?
+				ret = FALSE;
+		}
+
+		ImageUnload(pImage);
+	}
+
+	return ret;
+}
+
 BOOL LoadProcessLibrary(HANDLE hProcess, LPTSTR lpszLibraryPath)
 {
 	if (hProcess == NULL || lpszLibraryPath == NULL)
 	{
-		// Assume GetLastError() will provide explanation on these erroneous values.
+		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
 	}
 
@@ -140,10 +182,10 @@ BOOL LoadProcessLibrary(HANDLE hProcess, LPTSTR lpszLibraryPath)
 	return TRUE;
 }
 
-BOOL LoadCoCLibrary(stCreateProcess *lpArgs, BOOL bResumeThread)
+BOOL CoCPath(LPTSTR szCoCPath)
 {
 	TCHAR szThisPath[MAX_PATH] = { 0 };
-	TCHAR szCoCPath[MAX_PATH] = { 0 };
+
 	HMODULE self = GetModuleHandle(_T("connect-or-cut.dll"));
 
 	if (self == NULL)
@@ -166,12 +208,67 @@ BOOL LoadCoCLibrary(stCreateProcess *lpArgs, BOOL bResumeThread)
 	}
 
 	_tcsncpy(szCoCPath, szThisPath, lpszLastBackslash + 1 - szThisPath);
+	return TRUE;
+}
 
-	// If the process being launched differs in bitness from us, then rerun it with
-	// correct coc.exe (or coc32.exe)
-	BOOL isOtherWow64 = FALSE;
-	if (!IsWow64Process(lpArgs->lpProcessInformation->hProcess, &isOtherWow64))
+BOOL CoCExePath(LPTSTR lpPath, BOOL is64Bit)
+{
+	if (!CoCPath(lpPath))
 	{
+		return FALSE;
+	}
+
+	LPCTSTR lpExe = is64Bit ? _T("coc.exe ") : _T("coc32.exe ");
+	SIZE_T szLen = is64Bit ? 8 : 10;
+	_tcsncat(lpPath, lpExe, szLen);
+
+	return TRUE;
+}
+
+BOOL CoCLibPath(LPTSTR lpPath, BOOL is64Bit)
+{
+	if (!CoCPath(lpPath))
+	{
+		return FALSE;
+	}
+
+	LPCTSTR lpLib = is64Bit ? _T("connect-or-cut.dll") : _T("connect-or-cut32.dll");
+	SIZE_T szLen = is64Bit ? 19 : 21;
+	_tcsncat(lpPath, lpLib, szLen);
+
+	return TRUE;
+}
+
+BOOL LoadCoCLibrary(HANDLE hProcess, BOOL is64Bit)
+{
+	TCHAR szCoCPath[MAX_PATH] = { 0 };
+
+	if (!CoCLibPath(szCoCPath, is64Bit))
+	{
+		return FALSE;
+	}
+
+	if (!LoadProcessLibrary(hProcess, szCoCPath))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+//
+// Creates the process specified in lpArgs, using passed function.
+//
+// Before doing so, ensure we will be able to inject connect-or-cut
+// by comparing our bitness with the one of the process to run. If they differ
+// then we rerun the appropriate coc.exe (or coc32.exe). If they don't then
+// we inject using regular mechanism.
+//
+BOOL CreateProcessThenInject(stCreateProcess *lpArgs, BOOL *isConsole)
+{
+	if (lpArgs == NULL || lpArgs->fn == NULL)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
 	}
 
@@ -181,82 +278,136 @@ BOOL LoadCoCLibrary(stCreateProcess *lpArgs, BOOL bResumeThread)
 		return FALSE;
 	}
 
-	if (isOtherWow64 != isThisWow64)
+	PSTR exe = GetImageName(lpArgs);
+	BOOL is64Bit = FALSE;
+
+	if (!CheckNtImage(exe, &is64Bit, isConsole))
 	{
-		// We won't be able to inject here. So kill this suspended process and
-		// try again with coc.exe (or coc32.exe)
-		// TODO: TerminateProcess is asynchronous; we don't wait for completion but we 
-		// probably should.
-		if (!TerminateProcess(lpArgs->lpProcessInformation->hProcess, 0))
+		DWORD dwLastError = GetLastError();
+		LocalFree(exe);
+		SetLastError(dwLastError);
+		return FALSE;
+	}
+
+	LocalFree(exe);
+	if (isThisWow64 != !is64Bit)
+	{
+		// Need to rerun with coc.exe (or coc32.exe), so we'll alter the command-line
+		TCHAR szCoCPath[MAX_PATH] = { 0 };
+		if (!CoCExePath(szCoCPath, is64Bit))
 		{
 			return FALSE;
 		}
 
-		CloseHandle(lpArgs->lpProcessInformation->hProcess);
-		CloseHandle(lpArgs->lpProcessInformation->hThread);
-
-		TCHAR *lpCoc = isOtherWow64 ? _T("coc32.exe ") : _T("coc.exe ");
-		SIZE_T szLen = isOtherWow64 ? 10 : 8;
-
-		_tcsncat(szCoCPath, lpCoc, szLen);
 		_tcscat(szCoCPath, lpArgs->lpCommandLine);
 
-		ZeroMemory(lpArgs->lpProcessInformation, sizeof(*lpArgs->lpProcessInformation));
 		// Store to restore later
 		LPTSTR lpCommandLine = lpArgs->lpCommandLine;
 		LPCTSTR lpApplicationName = lpArgs->lpApplicationName;
 		lpArgs->lpCommandLine = szCoCPath;
 		lpArgs->lpApplicationName = NULL;
+		BOOL bCreateProcess = (*lpArgs->fn)(lpArgs->lpApplicationName, lpArgs->lpCommandLine, lpArgs->lpProcessAttributes,
+			lpArgs->lpThreadAttributes, lpArgs->bInheritHandles, lpArgs->dwCreationFlags,
+			lpArgs->lpEnvironment, lpArgs->lpCurrentDirectory, lpArgs->lpStartupInfo, lpArgs->lpProcessInformation);
+		lpArgs->lpCommandLine = lpCommandLine;
+		lpArgs->lpApplicationName = lpApplicationName;
 
-		if (bResumeThread)
+		return bCreateProcess;
+	}
+	else
+	{
+		BOOL bNeedsResume = !(((lpArgs->dwCreationFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED));
+		lpArgs->dwCreationFlags |= CREATE_SUSPENDED;
+		BOOL bCreateProcess = (*lpArgs->fn)(lpArgs->lpApplicationName, lpArgs->lpCommandLine, lpArgs->lpProcessAttributes,
+			lpArgs->lpThreadAttributes, lpArgs->bInheritHandles, lpArgs->dwCreationFlags,
+			lpArgs->lpEnvironment, lpArgs->lpCurrentDirectory, lpArgs->lpStartupInfo, lpArgs->lpProcessInformation);
+		if (bNeedsResume)
 		{
 			lpArgs->dwCreationFlags &= ~CREATE_SUSPENDED;
 		}
 
-		if (!IndirectCreateProcess(lpArgs))
+		if (bCreateProcess)
 		{
-			return FALSE;
+			if (!LoadCoCLibrary(lpArgs->lpProcessInformation->hProcess, is64Bit))
+			{
+				// TODO
+				return FALSE;
+			}
+
+			if (bNeedsResume && ResumeThread(lpArgs->lpProcessInformation->hThread) == -1)
+			{
+				// TODO
+				return FALSE;
+			}
+
+		}
+
+		return bCreateProcess;
+	}
+}
+
+static TCHAR* MoveBeforeFirstArgument(TCHAR *lpCommandLine)
+{
+	TCHAR* p = lpCommandLine;
+	BOOL bInQuotes = FALSE;
+	size_t uiBackslashes = 0;
+
+	while (*p != _T('\0'))
+	{
+		if (*p == _T('\\'))
+		{
+			uiBackslashes++;
+		}
+		else if (*p == _T('"'))
+		{
+			if (uiBackslashes % 2 == 0)
+			{
+				bInQuotes = !bInQuotes;
+			}
+
+			uiBackslashes = 0;
+		}
+		else if (*p == _T(' '))
+		{
+			uiBackslashes = 0;
+
+			if (!bInQuotes)
+				break;
 		}
 		else
 		{
-			lpArgs->lpCommandLine = lpCommandLine;
-			lpArgs->lpApplicationName = lpApplicationName;
+			uiBackslashes = 0;
 		}
+
+		p++;
+	}
+
+	return p;
+}
+
+static PSTR StringFromUnicode(LPCTSTR lpSource, size_t dstLen)
+{
+	size_t converted;
+	PSTR dst = (PSTR) LocalAlloc(LMEM_ZEROINIT, dstLen);
+	wcstombs_s(&converted, dst, dstLen, lpSource, _TRUNCATE);
+	return dst;
+}
+
+PSTR GetImageName(stCreateProcess *lpArgs)
+{
+	if (lpArgs == NULL)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return NULL;
+	}
+
+	if (lpArgs->lpApplicationName)
+	{
+		return StringFromUnicode(lpArgs->lpApplicationName, (_tcslen(lpArgs->lpApplicationName) + 1) * sizeof(TCHAR));
 	}
 	else
 	{
-		if (!isOtherWow64)
-		{
-			_tcsncat(szCoCPath, _T("connect-or-cut.dll"), 19);
-		}
-		else
-		{
-			_tcsncat(szCoCPath, _T("connect-or-cut32.dll"), 21);
-		}
-
-		if (!LoadProcessLibrary(lpArgs->lpProcessInformation->hProcess, szCoCPath))
-		{
-			return FALSE;
-		}
-
-		if (bResumeThread && ResumeThread(lpArgs->lpProcessInformation->hThread) == -1)
-		{
-			return FALSE;
-		}
+		LPTSTR lpFirstArgument = MoveBeforeFirstArgument(lpArgs->lpCommandLine);
+		return StringFromUnicode(lpArgs->lpCommandLine, lpFirstArgument + 1 - lpArgs->lpCommandLine);
 	}
-
-	return TRUE;
-}
-
-BOOL IndirectCreateProcess(stCreateProcess *lpArgs)
-{
-	if (lpArgs == NULL || lpArgs->fn == NULL)
-	{
-		SetLastError(ERROR_INVALID_PARAMETER);
-		return FALSE;
-	}
-
-	return (*lpArgs->fn)(lpArgs->lpApplicationName, lpArgs->lpCommandLine, lpArgs->lpProcessAttributes,
-		lpArgs->lpThreadAttributes, lpArgs->bInheritHandles, lpArgs->dwCreationFlags,
-		lpArgs->lpEnvironment, lpArgs->lpCurrentDirectory, lpArgs->lpStartupInfo, lpArgs->lpProcessInformation);
 }

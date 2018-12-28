@@ -128,30 +128,22 @@ int _tmain(int argc, _TCHAR* argv[])
 		.lpThreadAttributes = NULL,
 		.bInheritHandles = TRUE,
 		// Do we really need to pass CREATE_UNICODE_ENVIRONMENT here?
-		.dwCreationFlags = CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
+		.dwCreationFlags = CREATE_UNICODE_ENVIRONMENT,
 		.lpEnvironment = NULL,
 		.lpCurrentDirectory = NULL,
 		.lpStartupInfo = &si,
 		.lpProcessInformation = &pi
 	};
 
-	if (!IndirectCreateProcess(&cpArgs))
+	BOOL bWaitForCompletion;
+
+	if (!CreateProcessThenInject(&cpArgs, &bWaitForCompletion))
 	{
 		ErrorExit(_T("CreateProcess"));
 	}
 
 	HeapFree(hHeap, HEAP_NO_SERIALIZE, lpThatCommandLine);
 	lpThatCommandLine = NULL;
-
-	cpArgs.lpCommandLine = MoveBeforeFirstArgument(lpThisCommandLine) + 1;
-
-	if (!LoadCoCLibrary(&cpArgs, TRUE))
-	{
-		ErrorExit(_T("LoadCoCLibrary"));
-	}
-
-	// TODO add a flag to coc to override this
-	BOOL bWaitForCompletion = FALSE;
 
 	if (!bWaitForCompletion)
 	{

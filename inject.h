@@ -30,6 +30,8 @@ typedef struct stCreateProcess {
 	LPPROCESS_INFORMATION lpProcessInformation;
 } stCreateProcess;
 
-BOOL IndirectCreateProcess(stCreateProcess *lpArgs);
+BOOL CreateProcessThenInject(stCreateProcess *lpArgs, BOOL *isConsole);
 
-BOOL LoadCoCLibrary(stCreateProcess *lpArgs, BOOL bResumeThread);
+BOOL LoadCoCLibrary(HANDLE hProcess, BOOL is64Bit);
+
+PSTR GetImageName(stCreateProcess *lpArgs);
