@@ -13,8 +13,8 @@ function Test-Rule([string]$machine, [string]$port, [string]$level, [string]$all
 	$env:COC_LOG_LEVEL=$LogLevels[$level]
 	$env:COC_LOG_TARGET=$LogTargets["stderr"]
 	Write-Host -NoNewline "Checking if we $level connection to ${machine}:$port with rules: {allow=$allow; block=$block} "
-	&{ .\coc.exe .\tcpcontest.exe $machine $-port } 2>&1 | Select-String $level.ToUpper() >$null
-	if (!$?) { 
+	$found=&{ .\coc.exe .\tcpcontest.exe $machine $port } 2>&1 | Select-String $level.ToUpper()
+	if (!$found) { 
 		Write-Host "KO"
 		$ecount++ 
 	} else {
@@ -37,7 +37,7 @@ Test-Allow -machine ::1 -port 50 -allow [::1]:50 -block "*"
 Test-Block -machine ::1 -port 50 -allow [::1]:49 -block "*"
 Test-Allow -machine ::1 -port 21 -allow [::1]:ftp -block "*"
 Test-Allow -machine a::f -port 50 -allow a::f -block "*"
-Test-Block -machine a::f -port 50 with args -b [a::f]:50
+Test-Block -machine a::f -port 50 -block [a::f]:50
 Test-Allow -machine 2001:db8:0:1:1:1:1:1 -port 50 -allow 2001:db8:0:1:1:1:1:1 -block "*"
 Test-Allow -machine 127.0.0.1 -port 50 -allow 127.0.0.1:50 -block "*"
 Test-Allow -machine 127.0.0.1 -port 50 -allow 127.0.0.1 -block "*"
@@ -45,8 +45,8 @@ Test-Block -machine 127.0.0.1 -port 50 -allow 127.0.0.1:49 -block "*"
 Test-Allow -machine 127.0.0.1 -port 50
 Test-Allow -machine 127.0.0.1 -port 50 -allow "*"
 Test-Block -machine 127.0.0.1 -port 50 -block "*"
-Test-Allow -machine local-machine -port 50 -allow local-machine -block "*"
-Test-Block -machine local-machine -port 50 -allow localhost:49 -block "*"
+Test-Allow -machine localhost -port 50 -allow localhost -block "*"
+Test-Block -machine localhost -port 50 -allow localhost:49 -block "*"
 Test-Allow -machine 127.0.0.1 -port 80 -allow ::ffff:7f00:1 -block "*"
 Test-Block -machine 127.0.0.2 -port 80 -allow ::ffff:7f00:1 -block "*"
 Test-Allow -machine 127.0.0.1 -port 80 -allow [::ffff:7f00:1]:80 -block "*"
