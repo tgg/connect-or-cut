@@ -688,6 +688,17 @@ coc_rule_add (const char * const str, const size_t len, const size_t rule_type)
 
       if (getservbyname_needed)
 	{
+#ifdef _WIN32
+		/* We need to initialize WinSock. It's safe to do so. */
+		WSADATA wsaData;
+		int iWSErr = WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+		if (iWSErr != 0)
+		{
+			DIE("Cannot initialize WinSock 2 API, aborting\n");
+		}
+#endif
+
 	  char *svc = strndup (service, len - (service - str));
 	  struct servent *svt = getservbyname (svc, "tcp");
 
@@ -695,11 +706,17 @@ coc_rule_add (const char * const str, const size_t len, const size_t rule_type)
 	    {
 	      port = ntohs (svt->s_port);
 	      free (svc);
+#ifdef _WIN32
+		  WSACleanup();
+#endif
 	    }
 	  else
 	    {
 	      fprintf (stderr, "service `%s' not found, aborting\n", svc);
 	      free (svc);
+#ifdef _WIN32
+		  WSACleanup();
+#endif
 	      exit (EXIT_FAILURE);
 	    }
 	}
@@ -859,6 +876,17 @@ coc_rule_add (const char * const str, const size_t len, const size_t rule_type)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+#ifdef _WIN32
+	/* We need to initialize WinSock. It's safe to do so. */
+	WSADATA wsaData;
+	int iWSErr = WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+	if (iWSErr != 0)
+	{
+		DIE("Cannot initialize WinSock 2 API, aborting\n");
+	}
+#endif
+
 	if ((err = getaddrinfo (host, NULL, &hints, &ailist)) != 0)
 	  {
 	    DIE ("%s, aborting\n", gai_strerror (err));
@@ -894,11 +922,16 @@ coc_rule_add (const char * const str, const size_t len, const size_t rule_type)
 
 	freeaddrinfo (ailist);
 	free (host);
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
+
 	break;
       }
     }
 
-  return 0;
+	return 0;
 }
 
 static size_t
