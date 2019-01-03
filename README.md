@@ -37,7 +37,6 @@ If you want to compile it with debug information:
     $ CFLAGS=-g make os=$(uname -s)
 
 ### Windows
-
 Download binaries or compile using Visual Studio 2015.
 
 
@@ -90,10 +89,80 @@ displayed on stderr.
                                        	  - debug       Log everything
      -v, --version                     	Print connect-or-cut version.
 
-
 ### Windows
 
-TO WRITE
+From a PowerShell console:
+
+    PS> .\coc.ps1 -AllowDNS -Allow '*.google.com,*.1e100.net' -Block '*' 'C:\Program Files\Mozilla Firefox\firefox.exe'
+
+Or to do it manually, from cmd:
+
+    > set COC_ALLOW=212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net && set COC_BLOCK=* && coc.exe "C:\Program Files\Mozilla Firefox\firefox.exe"
+
+This invokes firefox, allowing only outgoing connection to my ISP
+provided name servers, to all google.com and 1e100.net addresses.
+
+Everything else will be blocked.
+
+`coc.ps1` is a helper script that will set appropriate variables for you:
+
+    PS> .\coc.ps1 -Help
+	NAME
+		coc.ps1
+
+	SUMMARY
+		coc configures connect-or-cut for the specified program.
+
+
+	SYNTAX
+		coc.ps1 [-AllowDNS] [-Allow <String[]>] [-Block <String[]>] [-Help] [-LogTarget <String[]>] [-LogPath <String>] [-LogLevel <String>] [-Version] [-ProgramAndParams <String[]>] [<CommonParameters>]
+
+
+	DESCRIPTION
+		coc helper script sets environment variables then invokes coc.exe on the
+		specified program. If no program is specified it outputs environment
+		variables that need to be set to replicate the requested rules.
+
+		Whenever a TCP connection is requested, the address where to connect
+		is checked against the list of allowed hosts. If it's in it, the connection
+		is allowed. If not, the list of blocked hosts is checked. If it's in it,
+		the connection is rejected. If not, the connection is allowed.
+
+
+	PARAMETERS
+		-AllowDNS [<SwitchParameter>]
+			Allow connections to DNS nameservers.
+
+		-Allow <String[]>
+			List of allowed hosts. Can be specified as host, host:port, host:port/bits or
+			as a glob like "*.google.com". Specifying "*" allows every connection.
+
+		-Block <String[]>
+			List of blocked hosts. Can be specified as host, host:port, host:port/bits or
+			as a glob like "*.google.com". Specifying "*" can block every connection.
+
+		-Help [<SwitchParameter>]
+			Shows this help message.
+
+		-LogTarget <String[]>
+			The location where to write logs. Valid values are: "stderr", which is the
+			default; "syslog"; and "file". Multiple values can be specified.
+
+		-LogPath <String>
+			The path where to store logs when logging to files.
+
+		-LogLevel <String>
+			What to log. Can be one of: "silent" to discard logging, "error" to log
+			only errors, "block" to also log blocked connections,"allow" to also
+			log allowed connections, and "debug" to add debugging information. Default
+			value is "block".
+
+		-Version [<SwitchParameter>]
+			Shows the version of connect-or-cut library.
+
+		-ProgramAndParams <String[]>
+			The program (and its arguments) to launch with the specified rules.
+			If not specified, the cmd instructions to replicate these rules are displayed.
 
 ## Use cases
 
@@ -146,6 +215,7 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 
 ## News
  * Version 1.0.4
+   * Add CIDR notation (contributed by saito tom)
    * First version for Windows
 
  * Version 1.0.3 (2017-03-21)
