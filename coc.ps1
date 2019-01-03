@@ -114,7 +114,7 @@ function Get-DnsServers() {
 }
 
 $scriptPath = Split-Path -parent $MyInvocation.MyCommand.Definition
-$LogTargets = @{"stderr" = 1; "syslog" = 2; "file" = 3}
+$LogTargets = @{"stderr" = 1; "syslog" = 2; "file" = 4}
 $LogLevels = @{"silent" = 0; "error" = 1; "block" = 2; "allow" = 3; "debug" = 4}
 
 if ($Help -eq $true) {
