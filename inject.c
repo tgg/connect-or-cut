@@ -256,6 +256,26 @@ BOOL LoadCoCLibrary(HANDLE hProcess, BOOL is64Bit)
 	return TRUE;
 }
 
+static inline PSTR ExeWithoutQuotes(PSTR lpExe)
+{
+	PSTR exe = lpExe;
+
+	if (exe)
+	{
+		if (exe[0] == '"')
+		{
+			exe++;
+			size_t len = strlen(exe);
+			if (len > 0 && exe[len - 1] == '"')
+			{
+				exe[len - 1] = '\0';
+			}
+		}
+	}
+
+	return exe;
+}
+
 //
 // Creates the process specified in lpArgs, using passed function.
 //
@@ -281,7 +301,7 @@ BOOL CreateProcessThenInject(stCreateProcess *lpArgs, BOOL *isConsole)
 	PSTR exe = GetImageName(lpArgs);
 	BOOL is64Bit = FALSE;
 
-	if (!CheckNtImage(exe, &is64Bit, isConsole))
+	if (!CheckNtImage(ExeWithoutQuotes(exe), &is64Bit, isConsole))
 	{
 		DWORD dwLastError = GetLastError();
 		LocalFree(exe);
