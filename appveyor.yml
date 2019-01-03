@@ -14,3 +14,10 @@ before_build:
 
 build:
   project: connect-or-cut.sln
+
+before_test:
+  - ps: cp coc.ps1 $env:PLATFORM\$env:CONFIGURATION
+  - ps: cp testsuite.ps1 $env:PLATFORM\$env:CONFIGURATION
+
+test_script:
+  - ps: testsuite.ps1
