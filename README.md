@@ -23,9 +23,7 @@ This is similar to a firewall, except that:
 Provided you have a C compiler, GNU or BSD make on a Unix box:
 
     $ git clone https://github.com/tgg/connect-or-cut.git
-
     $ cd connect-or-cut
-
     $ make os=$(uname -s)
 
 If you want to compile it for 32 bits:
@@ -97,7 +95,9 @@ From a PowerShell console:
 
 Or to do it manually, from cmd:
 
-    > set COC_ALLOW=212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net && set COC_BLOCK=* && coc.exe "C:\Program Files\Mozilla Firefox\firefox.exe"
+    > set COC_ALLOW=212.27.40.240:53;212.27.40.241:53;*.google.com;*.1e100.net
+    > set COC_BLOCK=*
+    > coc.exe "C:\Program Files\Mozilla Firefox\firefox.exe"
 
 This invokes firefox, allowing only outgoing connection to my ISP
 provided name servers, to all google.com and 1e100.net addresses.
@@ -115,7 +115,8 @@ Everything else will be blocked.
 
 
 	SYNTAX
-		coc.ps1 [-AllowDNS] [-Allow <String[]>] [-Block <String[]>] [-Help] [-LogTarget <String[]>] [-LogPath <String>] [-LogLevel <String>] [-Version] [-ProgramAndParams <String[]>] [<CommonParameters>]
+		coc.ps1 [-AllowDNS] [-Allow <String[]>] [-Block <String[]>] [-Help] [-LogTarget <String[]>] [-LogPath <String>] 
+		[-LogLevel <String>] [-Version] [-ProgramAndParams <String[]>] [<CommonParameters>]
 
 
 	DESCRIPTION
@@ -216,7 +217,7 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
 ## News
  * Version 1.0.4
    * Add CIDR notation (contributed by saito tom)
-   * First version for Windows
+   * Preliminary version for Windows
 
  * Version 1.0.3 (2017-03-21)
    * Fix testsuite on SunOS
