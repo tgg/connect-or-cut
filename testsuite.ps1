@@ -3,6 +3,7 @@ param ()
 
 $scriptPath = Split-Path -parent $MyInvocation.MyCommand.Definition
 cd $scriptPath
+gci
 
 # TODO: Sanity checks
 
