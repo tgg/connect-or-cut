@@ -1,4 +1,7 @@
-﻿$scriptPath = Split-Path -parent $MyInvocation.MyCommand.Definition
+﻿[CmdletBinding(PositionalBinding=$false)]
+param ()
+
+$scriptPath = Split-Path -parent $MyInvocation.MyCommand.Definition
 cd $scriptPath
 
 # TODO: Sanity checks
