@@ -20,4 +20,4 @@ before_test:
   - ps: if ($env:PLATFORM -eq "x64") { cp testsuite.ps1 $env:PLATFORM\$env:CONFIGURATION }
 
 test_script:
-  - ps: if ($env:PLATFORM -eq "x64") { testsuite.ps1 }
+  - ps: if ($env:PLATFORM -eq "x64") { $env:PLATFORM\$env:CONFIGURATION\testsuite.ps1 }
