@@ -5,9 +5,6 @@ compiler:
 os:
   - linux
   - osx
-addons:
-  hosts:
-  - www.google.com
 before_install:
   - test $TRAVIS_OS_NAME = linux && sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1 || true
 script: make test os=$(uname -s)
