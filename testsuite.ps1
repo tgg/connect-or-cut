@@ -3,20 +3,19 @@ cd $scriptPath
 
 # TODO: Sanity checks
 
-$LogTargets = @{"stderr" = 1; "syslog" = 2; "file" = 3}
-$LogLevels = @{"silent" = 0; "error" = 1; "block" = 2; "allow" = 3; "debug" = 4}
 $ecount = 0
 
 function Test-Rule([string]$machine, [string]$port, [string]$level, [string]$allow, [string]$block) {
-	$env:COC_ALLOW=$allow
-	$env:COC_BLOCK=$block
-	$env:COC_LOG_LEVEL=$LogLevels[$level]
-	$env:COC_LOG_TARGET=$LogTargets["stderr"]
+	# We need to reset variables before starting, since they are kept in the PS session
+	$env:COC_ALLOW=""
+	$env:COC_BLOCK=""
+	$env:COC_LOG_LEVEL=""
+	$env:COC_LOG_TARGET=""
 	Write-Host -NoNewline "Checking if we $level connection to ${machine}:$port with rules: {allow=$allow; block=$block} "
-	$found=&{ .\coc.exe .\tcpcontest.exe $machine $port } 2>&1 | Select-String $level.ToUpper()
+	$found=&{ .\coc.ps1 -Allow $allow -Block $block -LogTarget stderr -LogLevel $level .\tcpcontest.exe $machine $port } 2>&1 | Select-String $level.ToUpper()
 	if (!$found) { 
 		Write-Host "KO"
-		$ecount++ 
+		$script:ecount++ 
 	} else {
 		Write-Host "OK"
 	}
@@ -55,4 +54,13 @@ Test-Allow -machine ::ffff:7f00:1 -port 80 -allow 127.0.0.1 -block "*"
 Test-Block -machine ::ffff:7f00:2 -port 80 -allow 127.0.0.1 -block "*"
 Test-Allow -machine ::ffff:7f00:1 -port 80 -allow 127.0.0.1:80 -block "*"
 Test-Block -machine ::ffff:7f00:1 -port 80 -allow 127.0.0.1:81 -block "*"
+Test-Allow -machine ::ffff:7f00:1 -port 80 -allow 127.0.0.1:81 -block "*"
 #Test-Allow -machine www.google.com -port 80 with args -d -a \'*.google.com\' -a \'*.1e100.net\' -block "*"
+
+
+if ($ecount -gt 0) {
+    Write-Host -ForegroundColor Red "$ecount test(s) failed!"
+	exit 1
+} else {
+    Write-Host "All tests passed!"
+}
