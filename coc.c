@@ -127,8 +127,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		.lpProcessAttributes = NULL,
 		.lpThreadAttributes = NULL,
 		.bInheritHandles = TRUE,
-		// Do we really need to pass CREATE_UNICODE_ENVIRONMENT here?
-		.dwCreationFlags = CREATE_UNICODE_ENVIRONMENT,
+		.dwCreationFlags = 0,
 		.lpEnvironment = NULL,
 		.lpCurrentDirectory = NULL,
 		.lpStartupInfo = &si,
