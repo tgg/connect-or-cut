@@ -91,7 +91,7 @@ displayed on stderr.
 
 From a PowerShell console:
 
-    PS> .\coc.ps1 -AllowDNS -Allow '*.google.com,*.1e100.net' -Block '*' 'C:\Program Files\Mozilla Firefox\firefox.exe'
+    PS> .\coc.ps1 -AllowDNS -Allow '*.google.com,*.1e100.net' -Block '*' '"C:\Program Files\Mozilla Firefox\firefox.exe"'
 
 Or to do it manually, from cmd:
 
