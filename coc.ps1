@@ -108,9 +108,36 @@ function Append-ProcessEnvironment([string]$name, [string[]]$values) {
 }
 
 function Get-DnsServers() {
-	# This is not the right thing to do because it limits to IPv4.
-	# Patches welcome!
-	(Get-DnsClientServerAddress -AddressFamily IPv4 | where { $_.ServerAddresses.count -gt 0 }).ServerAddresses
+    try {
+	    # This is not the right thing to do because it limits to IPv4.
+	    # Patches welcome!
+	    (Get-DnsClientServerAddress -AddressFamily IPv4 | where { $_.ServerAddresses.count -gt 0 }).ServerAddresses
+
+    } catch [System.Management.Automation.CommandNotFoundException] {
+        # Get-DnsClientServerAddress is available only in Windows >= 8
+        # Adapted from Get-DNSServers.ps1 written by Sitaram Pamarthi (http://techibee.com)
+        Write-Debug "Using Get-WmiObject to find DNS servers"
+
+        try {
+			$Networks = Get-WmiObject -Class Win32_NetworkAdapterConfiguration `
+							-Filter IPEnabled=TRUE `
+							-ComputerName localhost `
+							-ErrorAction Stop
+		} catch {
+			Write-Error "Unable to find DNS server for localhost; aborting!"
+			exit 1
+		}
+
+        $DNSServers = @()
+
+		foreach ($Network in $Networks) {
+			if ($Network.DNSServerSearchOrder) {
+                $DNSServers += $Network.DNSServerSearchOrder
+            }
+        }
+
+        $DNSServers
+    }
 }
 
 $scriptPath = Split-Path -parent $MyInvocation.MyCommand.Definition
