@@ -174,7 +174,12 @@ Write-Verbose "COC_ALLOW is: $env:COC_ALLOW"
 Write-Verbose "COC_BLOCK is: $env:COC_BLOCK"
 
 $env:COC_LOG_LEVEL=$LogLevels[$LogLevel]
-if ($LogPath) { $env:COC_LOG_PATH="$LogPath" }
+Write-Verbose "COC_LOG_LEVEL is: $env:COC_LOG_LEVEL"
+
+if ($LogPath) {
+    $env:COC_LOG_PATH="$LogPath"
+    Write-Verbose "COC_LOG_PATH is: $env:COC_LOG_PATH"
+}
 
 if ($LogTarget) {
 	$acc = 0
@@ -184,11 +189,12 @@ if ($LogTarget) {
 	}
 
 	$env:COC_LOG_TARGET="$acc"
+    Write-Verbose "COC_LOG_TARGET is: $env:COC_LOG_TARGET"
 }
 
 if ($ProgramAndParams) {
 	$exe = Join-Path -Path $scriptPath -ChildPath "coc.exe"
-	Write-Verbose "Starting: $ProgramAndParams"
+	Write-Verbose "Starting: $exe $ProgramAndParams"
 	Start-Process -FilePath $exe -Wait -NoNewWindow -ArgumentList $ProgramAndParams
 
 } else {
@@ -201,7 +207,7 @@ if ($ProgramAndParams) {
 		exit 0
 
 	} else {
-		Write-Error "missing command!"
+		Write-Error "Missing command!"
 		help $MyInvocation.MyCommand.Definition
 		exit 1
 	}
