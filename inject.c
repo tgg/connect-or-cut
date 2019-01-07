@@ -36,7 +36,10 @@
 #include <tchar.h>
 #include <Windows.h>
 #include "inject.h"
+#pragma warning(push)
+#pragma warning(disable : 4091)
 #include <ImageHlp.h>
+#pragma warning(pop)
 #pragma comment(lib, "Imagehlp.lib")
 
 #ifdef UNICODE
