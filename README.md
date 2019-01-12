@@ -191,6 +191,10 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    * performing connect syscall directly;
    * statically linked (e.g. Go binaries)
  * Only outgoing connection using TCP over IPv4 or IPv6 work for now.
+  * If you are using a network proxy then:
+   * you need to allow outgoing connections to the proxy
+   * blocking will not work for the traffic redirected to the proxy, since
+     it will do the connection instead of the source machine
  * Tested on:
    * Debian GNU/Linux with gcc and clang
    * FreeBSD 11.0-STABLE with clang
