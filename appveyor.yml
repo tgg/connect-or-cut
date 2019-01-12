@@ -32,7 +32,7 @@ after_build:
           $folder = "$(env:APPVEYOR_BUILD_FOLDER)\Release"
         }
       }
-      7z u connect-or-cut-$(appveyor_build_version).zip $(folder)\*.dll $(folder)\*.exe
+      7z u connect-or-cut-$appveyor_build_version.zip $folder\*.dll $folder\*.exe
 
 artifacts:
   - path: connect-or-cut-$(appveyor_build_version).zip
