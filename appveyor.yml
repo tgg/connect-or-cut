@@ -21,3 +21,21 @@ before_test:
 
 test_script:
   - ps: if ($env:PLATFORM -eq "x64") { & $env:PLATFORM\$env:CONFIGURATION\testsuite.ps1 -Verbose }
+
+after_build:
+  - 7z a connect-or-cut-%APPVEYOR_BUILD_VERSION%.zip README.md LICENSE coc.ps1 testsuite.ps1 %APPVEYOR_BUILD_FOLDER%\x64\Release\*.dll %APPVEYOR_BUILD_FOLDER%\x64\Release\*.exe %APPVEYOR_BUILD_FOLDER%\Release\*.dll %APPVEYOR_BUILD_FOLDER%\Release\*.exe
+
+artifacts:
+  - path: connect-or-cut.zip
+    name: connect-or-cut
+
+deploy:
+  description: 'connect-or-cut v$(appveyor_build_version)'
+  provider: GitHub
+  auth_token:
+    secure: 2J7opUzk3HlidHQBGIm76vtRaCwvuobgN/KxvDv6Ak/ksx14KKH5FKInwDUcTPRQ
+  draft: true
+  prerelease: true
+  on:
+    branch: master
+	APPVEYOR_REPO_TAG: true
