@@ -25,14 +25,14 @@ test_script:
 
 after_build:
   - ps: |
-      if ($env:CONFIG -eq "Release") {
+      if ($env:CONFIGURATION -eq "Release") {
         if ($env:PLATFORM -eq "x64") {
           $folder = "$(env:APPVEYOR_BUILD_FOLDER)\x64\Release"
         } else {
           $folder = "$(env:APPVEYOR_BUILD_FOLDER)\Release"
         }
+        7z u "connect-or-cut-$appveyor_build_version.zip" "$folder\*.dll" "$folder\*.exe"
       }
-      7z u "connect-or-cut-$appveyor_build_version.zip" "$folder\*.dll" "$folder\*.exe"
 
 artifacts:
   - path: connect-or-cut-$(appveyor_build_version).zip
