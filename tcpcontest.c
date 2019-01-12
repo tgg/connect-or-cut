@@ -1,6 +1,6 @@
 /* tcpcontest -- simple connect(2) test program
  *
- * Copyright Ⓒ 2017  Thomas Girard <thomas.g.girard@free.fr>
+ * Copyright Ⓒ 2017-2019  Thomas Girard <thomas.g.girard@free.fr>
  *
  * All rights reserved.
  *

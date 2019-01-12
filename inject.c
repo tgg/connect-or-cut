@@ -1,6 +1,6 @@
 ﻿/* inject.c -- Injects connect-or-cut DLL into a Windows process.
 *
-* Copyright Ⓒ 2017  Thomas Girard <thomas.g.girard@free.fr>
+* Copyright Ⓒ 2017-2019  Thomas Girard <thomas.g.girard@free.fr>
 *
 * All rights reserved.
 *

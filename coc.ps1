@@ -46,6 +46,13 @@ Shows the version of connect-or-cut library.
 The program (and its arguments) to launch with the specified rules.
 If not specified, the cmd instructions to replicate these rules are displayed.
 
+.NOTES
+Version: 1.0.4
+Author: Thomas Girard <thomas.g.girard@free.fr>
+
+.LINK
+https://github.com/tgg/connect-or-cut
+
 #>
 [CmdletBinding(PositionalBinding=$false)]
 param (
