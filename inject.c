@@ -35,6 +35,7 @@
 #include <SDKDDKVer.h>
 #include <tchar.h>
 #include <Windows.h>
+#include <strsafe.h>
 #include "inject.h"
 #pragma warning(push)
 #pragma warning(disable : 4091)
@@ -47,6 +48,36 @@
 #else
 #define LoadLib "LoadLibraryA"
 #endif
+
+// Yup, it's duplicated from error.c to avoid moving this into
+// another shared library.
+static void MessageBoxError(DWORD dwLastError, LPTSTR lpszFunction)
+{
+	LPVOID lpError;
+	LPVOID lpDisplayBuf;
+
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, dwLastError,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&lpError, 0, NULL);
+
+	lpDisplayBuf = (LPVOID)LocalAlloc(
+		LMEM_ZEROINIT,
+		(_tcslen((LPTSTR)lpError) + _tcslen(lpszFunction) + 14) * sizeof(TCHAR));
+	StringCchPrintf(
+		(LPTSTR)lpDisplayBuf,
+		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+		_T("%s failed: %s"),
+		lpszFunction, lpError);
+
+	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, _T("connect-or-cut"), MB_OK | MB_ICONERROR);
+
+	LocalFree(lpError);
+	LocalFree(lpDisplayBuf);
+}
 
 static BOOL CheckNtImage(PCSTR lpszLibraryPath, BOOL *is64Bit, BOOL *isConsole)
 {
@@ -353,13 +384,19 @@ BOOL CreateProcessThenInject(stCreateProcess *lpArgs, BOOL *isConsole)
 		{
 			if (!LoadCoCLibrary(lpArgs->lpProcessInformation->hProcess, is64Bit))
 			{
-				// TODO
-				return FALSE;
+				// Injection failed. In that case we report the error and let the
+				// process continue.
+				MessageBoxError(GetLastError(), _T("LoadCoCLibrary"));
 			}
 
 			if (bNeedsResume && ResumeThread(lpArgs->lpProcessInformation->hThread) == -1)
 			{
-				// TODO
+				// Unable to resume the main thread. We terminate the process to
+				// avoid it from being in a hung state.
+				DWORD dwLastError = GetLastError();
+				TerminateProcess(lpArgs->lpProcessInformation->hProcess, 0xdeadbeef);
+				WaitForSingleObject(lpArgs->lpProcessInformation->hProcess, INFINITE);
+				SetLastError(dwLastError);
 				return FALSE;
 			}
 
