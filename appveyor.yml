@@ -11,7 +11,7 @@ configuration:
 
 before_build:
   - cmd: nuget restore
-  - 7z a connect-or-cut-$(appveyor_build_version).zip README.md LICENSE coc.ps1 testsuite.ps1 
+  - 7z a connect-or-cut-%APPVEYOR_BUILD_VERSION%.zip README.md LICENSE coc.ps1 testsuite.ps1 
 
 build:
   project: connect-or-cut.sln
@@ -31,6 +31,7 @@ after_build:
         } else {
           $folder = "$(env:APPVEYOR_BUILD_FOLDER)\Release"
         }
+      }
       7z u connect-or-cut-$(appveyor_build_version).zip $(folder)\*.dll $(folder)\*.exe
 
 artifacts:
