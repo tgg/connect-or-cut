@@ -9,6 +9,10 @@ configuration:
   - Debug
   - Release
 
+environment:
+  SECURE_AV_SECRET:
+    secure: mCZ3m3JZoBBJ8wDcZzY6KsPhQ9B5OrldfwQUgVR/wOo=
+
 before_build:
   - cmd: nuget restore
 
@@ -35,14 +39,40 @@ after_build:
         7z a "connect-or-cut-$env:APPVEYOR_BUILD_VERSION-$bit.zip" README.md LICENSE coc.ps1 testsuite.ps1 "$folder\*.dll" "$folder\*.exe"
         Push-AppveyorArtifact "connect-or-cut-$env:APPVEYOR_BUILD_VERSION-$bit.zip"
       }
+  - ps: |
+      if (($env:CONFIGURATION -eq "Release") -and ($env:PLATFORM -eq "x64")) {
+        $apiUrl = 'https://ci.appveyor.com/api'
+        $token = $env:SECURE_AV_SECRET
+        $headers = @{
+          "Authorization" = "Bearer $token"
+          "Content-type" = "application/json"
+        }
+        $accountName = $env:APPVEYOR_ACCOUNT_NAME
+        $projectSlug = $env:APPVEYOR_PROJECT_SLUG
+        $downloadLocation = 'C:\projects'
+        # get project with last build details
+        $project = Invoke-RestMethod -Method Get -Uri "$apiUrl/projects/$accountName/$projectSlug" -Headers $headers
+        # x86 Release is job 2
+        $jobId = $project.build.jobs[2].jobId
+        $artifactFileName = "connect-or-cut-$env:APPVEYOR_BUILD_VERSION-32.zip"
+        # artifact will be downloaded as
+        $localArtifactPath = "$downloadLocation\$artifactFileName"
+        # download artifact
+        Invoke-RestMethod -Method Get -Uri "$apiUrl/buildjobs/$jobId/artifacts/$artifactFileName" `
+           -OutFile $localArtifactPath -Headers @{ "Authorization" = "Bearer $token" }
+        7z e $localArtifactPath coc32.exe connect-or-cut32.dll
+        cp "connect-or-cut-$env:APPVEYOR_BUILD_VERSION-64.zip" "connect-or-cut-$env:APPVEYOR_BUILD_VERSION.zip"
+        7z u "connect-or-cut-$env:APPVEYOR_BUILD_VERSION.zip" coc32.exe connect-or-cut32.dll
+        Push-AppveyorArtifact "connect-or-cut-$env:APPVEYOR_BUILD_VERSION.zip"
+      }
 
 deploy:
   description: 'connect-or-cut v$(appveyor_build_version)'
   provider: GitHub
   auth_token:
     secure: 2J7opUzk3HlidHQBGIm76vtRaCwvuobgN/KxvDv6Ak/ksx14KKH5FKInwDUcTPRQ
+  artifact: connect-or-cut-$(appveyor_build_version).zip
   draft: true
-  prerelease: true
   on:
     branch: master
     configuration: Release
