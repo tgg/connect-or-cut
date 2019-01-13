@@ -11,7 +11,6 @@ configuration:
 
 before_build:
   - cmd: nuget restore
-  - 7z a connect-or-cut-%APPVEYOR_BUILD_VERSION%.zip README.md LICENSE coc.ps1 testsuite.ps1 
 
 build:
   project: connect-or-cut.sln
@@ -28,15 +27,14 @@ after_build:
       if ($env:CONFIGURATION -eq "Release") {
         if ($env:PLATFORM -eq "x64") {
           $folder = "$env:APPVEYOR_BUILD_FOLDER\x64\Release"
+          $bit = "64"
         } else {
           $folder = "$env:APPVEYOR_BUILD_FOLDER\Release"
+          $bit = "32"
         }
-        7z u "connect-or-cut-$appveyor_build_version.zip" "$folder\*.dll" "$folder\*.exe"
+        7z a "connect-or-cut-$env:APPVEYOR_BUILD_VERSION-$bit.zip" README.md LICENSE coc.ps1 testsuite.ps1 "$folder\*.dll" "$folder\*.exe"
+        Push-AppveyorArtifact "connect-or-cut-$env:APPVEYOR_BUILD_VERSION-$bit.zip"
       }
-
-artifacts:
-  - path: connect-or-cut-$(appveyor_build_version).zip
-    name: connect-or-cut
 
 deploy:
   description: 'connect-or-cut v$(appveyor_build_version)'
@@ -47,4 +45,6 @@ deploy:
   prerelease: true
   on:
     branch: master
+    configuration: Release
+    platform: x64
     APPVEYOR_REPO_TAG: true
