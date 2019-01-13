@@ -219,7 +219,7 @@ Again, `coc` helper script should be used to do the heavy-lifting here.
    connect-or-cut cannot (yet?) work with Edge browser.
 
 ## News
- * Version 1.0.4
+ * Version 1.0.4 (2019-01-13)
    * Add CIDR notation (contributed by saito tom)
    * Preliminary version for Windows
 
